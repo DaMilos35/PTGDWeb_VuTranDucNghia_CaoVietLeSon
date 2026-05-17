@@ -178,7 +178,7 @@ export default function MessagingPage() {
     if (file) {
       try {
         showToast("Đang gửi ảnh...", "info");
-        const { url } = await fakeApi.uploadFile(file);
+        const { url } = await fakeApi.uploadLocalFile(file);
         handleSend({ type: 'image', url, text: "" });
         e.target.value = null;
       } catch (err) {

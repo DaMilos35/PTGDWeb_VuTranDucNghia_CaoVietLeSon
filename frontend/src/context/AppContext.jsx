@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import fakeApi from "../database/fakeApi";
+import { initSocket } from "../socket";
+import { saveMessageLocal } from "../database/chatStorage";
 
 const AppContext = createContext(null);
 
@@ -9,6 +11,12 @@ export function AppProvider({ children }) {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("handmeon_logged_user");
       return stored ? JSON.parse(stored) : null;
+    }
+    return null;
+  });
+  const [token, setToken] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("handmeon_jwt_token") || null;
     }
     return null;
   });
@@ -66,13 +74,31 @@ export function AppProvider({ children }) {
 
   const refreshedUserRef = useRef(null);
 
-  // Load cart & watchlist from server/localStorage on mount or user change
+  // Socket.IO and User Data Sync
   useEffect(() => {
     fakeApi.getCart(user?.id).then(setCartItems);
     fakeApi.getWatchlist(user?.id).then(setWatchedIds);
     if (user) fakeApi.getChatsForUser(user.id).then(setChats);
     else setChats([]);
     
+    if (user && token) {
+      const socket = initSocket(token);
+      
+      socket.on('receive_message', async (msg) => {
+        // Save to IndexedDB
+        await saveMessageLocal(msg);
+        // Refresh chats if needed (or let the component polling/events handle it)
+        fakeApi.getChatsForUser(user.id).then(setChats);
+      });
+      
+      socket.on('order_update', () => {
+        showToast("📦 Có cập nhật mới về đơn hàng!", "info");
+      });
+      
+    } else {
+      initSocket(null); // Disconnect
+    }
+
     // Refresh user data once per userId (avoid infinite loop)
     if (user && user.id && refreshedUserRef.current !== user.id) {
       refreshedUserRef.current = user.id;
@@ -85,7 +111,7 @@ export function AppProvider({ children }) {
         })
         .catch(() => {});
     }
-  }, [user?.id]);
+  }, [user?.id, token]);
 
   // Load notifications when user changes
   useEffect(() => {
@@ -113,14 +139,23 @@ export function AppProvider({ children }) {
     setToasts(t => t.filter(x => x.id !== id));
   }, []);
 
-  const handleAddToCart = useCallback(async (product) => {
-    const updated = await fakeApi.addToCart(product, user?.id);
-    setCartItems(updated);
-    showToast("Đã thêm vào giỏ hàng! 🛒");
+  const handleAddToCart = useCallback(async (product, qty = 1) => {
+    try {
+      const updated = await fakeApi.addToCart(product, user?.id, qty);
+      setCartItems(updated);
+      showToast(`Đã thêm ${qty} sản phẩm vào giỏ hàng! 🛒`);
+    } catch (err) {
+      showToast(err.message, "error");
+    }
   }, [user?.id, showToast]);
 
   const handleRemoveFromCart = useCallback(async (id) => {
     const updated = await fakeApi.removeFromCart(id, user?.id);
+    setCartItems(updated);
+  }, [user?.id]);
+
+  const handleUpdateCartQty = useCallback(async (id, qty) => {
+    const updated = await fakeApi.updateCartQty(id, qty, user?.id);
     setCartItems(updated);
   }, [user?.id]);
 
@@ -144,9 +179,13 @@ export function AppProvider({ children }) {
     showToast(isWatched ? "Đã lưu vào yêu thích ❤️" : "Đã xóa khỏi yêu thích");
   }, [user, showToast]);
 
-  const handleLogin = useCallback((u) => {
+  const handleLogin = useCallback((u, jwtToken) => {
     setUser(u);
     localStorage.setItem("handmeon_logged_user", JSON.stringify(u));
+    if (jwtToken) {
+      setToken(jwtToken);
+      localStorage.setItem("handmeon_jwt_token", jwtToken);
+    }
     fakeApi.getNotifications(u.id).then(notifs => {
       setNotifCount(notifs.filter(n => !n.read).length);
     });
@@ -154,7 +193,9 @@ export function AppProvider({ children }) {
 
   const handleLogout = useCallback(() => {
     setUser(null);
+    setToken(null);
     localStorage.removeItem("handmeon_logged_user");
+    localStorage.removeItem("handmeon_jwt_token");
     setNotifCount(0);
     setView("auth");
     showToast("Đã đăng xuất thành công");
@@ -215,10 +256,10 @@ export function AppProvider({ children }) {
   return (
     <AppContext.Provider value={{
       view, setView: navigateTo,
-      user, handleLogin, handleLogout, handleUpdateProfile, handleUpdateUser,
+      user, token, handleLogin, handleLogout, handleUpdateProfile, handleUpdateUser,
       selectedProduct, setSelectedProduct,
       selectedUser, setSelectedUser,
-      cartItems, handleAddToCart, handleRemoveFromCart, handleClearCart,
+      cartItems, handleAddToCart, handleRemoveFromCart, handleUpdateCartQty, handleClearCart,
       watchedIds, handleWatch,
       toasts, showToast, dismissToast,
       notifCount, setNotifCount,

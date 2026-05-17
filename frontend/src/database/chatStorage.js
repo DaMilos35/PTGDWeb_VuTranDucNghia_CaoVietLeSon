@@ -39,8 +39,12 @@ export const getMessagesLocal = async (chatId) => {
     const request = store.getAll();
     request.onsuccess = () => {
       const allMsgs = request.result;
-      const filtered = allMsgs.filter(m => m.chatId === chatId);
-      resolve(filtered.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)));
+      if (chatId) {
+        const filtered = allMsgs.filter(m => m.chatId === chatId);
+        resolve(filtered.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)));
+      } else {
+        resolve(allMsgs); // Used for getting all chats
+      }
     };
     request.onerror = () => reject(request.error);
   });
@@ -61,14 +65,32 @@ export const getChatListLocal = async (userId) => {
           if (!chats[msg.chatId] || new Date(msg.timestamp) > new Date(chats[msg.chatId].lastMessageTime)) {
             chats[msg.chatId] = {
               id: msg.chatId,
-              lastMessage: msg.text || (msg.isImage ? 'Gửi một ảnh' : 'Tin nhắn'),
+              lastMessage: msg.text || (msg.type === 'image' ? '[Hình ảnh]' : '[Tin nhắn]'),
               lastMessageTime: msg.timestamp,
-              unreadCount: 0 // Mock unread
+              unreadCount: allMsgs.filter(m => m.chatId === msg.chatId && m.senderId !== userId && !m.read).length
             };
           }
         }
       });
       resolve(Object.values(chats));
+    };
+    request.onerror = () => reject(request.error);
+  });
+};
+
+export const markAsReadLocal = async (chatId, userId) => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.getAll();
+    request.onsuccess = () => {
+      const msgs = request.result.filter(m => m.chatId === chatId && m.senderId !== userId && !m.read);
+      msgs.forEach(m => {
+        m.read = true;
+        store.put(m);
+      });
+      resolve(true);
     };
     request.onerror = () => reject(request.error);
   });

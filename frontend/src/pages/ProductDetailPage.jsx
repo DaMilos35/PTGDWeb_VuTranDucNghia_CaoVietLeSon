@@ -237,11 +237,13 @@ export default function ProductDetailPage() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [offerPrice, setOfferPrice] = useState("");
+  const [qty, setQty] = useState(1);
   const { data: categories } = useApi(() => fakeApi.getCategories(), []);
 
   useEffect(() => {
     if (product) {
-      fakeApi.incrementProductViews(product.id).catch(() => { });
+      setQty(1);
+      fakeApi.trackProductView(product.id, product.category).catch(() => { });
       fakeApi.getUserById(product.sellerId).then(s => {
         setSeller(s);
         if (user && s.followers?.includes(user.id)) setIsFollowing(true);
@@ -477,22 +479,59 @@ export default function ProductDetailPage() {
                 </div>
               </div>
             ) : (
-              <div style={{ display: "flex", gap: 12 }}>
-                <Button 
-                  size="lg" 
-                  fullWidth 
-                  onClick={() => { handleAddToCart(product); setCartDrawerOpen(true); }}
-                >
-                  🛒 Thêm vào giỏ
-                </Button>
-                <Button 
-                  size="lg" 
-                  variant="outline" 
-                  fullWidth 
-                  onClick={() => { handleAddToCart(product); setView("checkout"); }}
-                >
-                  Mua ngay
-                </Button>
+              <div>
+                {!isOwner && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: DS.textSecondary }}>Chọn số lượng:</span>
+                      <span style={{ fontSize: 13, color: product.stock > 0 ? DS.success : DS.error, fontWeight: 700 }}>
+                        {product.stock > 0 ? `Còn lại: ${product.stock} sản phẩm` : "Hết hàng"}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <button
+                        onClick={() => setQty(prev => Math.max(1, prev - 1))}
+                        disabled={qty <= 1 || product.stock === 0}
+                        style={{
+                          width: 40, height: 40, borderRadius: DS.radiusMd, border: `1.5px solid ${DS.border}`,
+                          background: DS.bgCard, fontSize: 18, fontWeight: "bold", cursor: "pointer",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          opacity: qty <= 1 || product.stock === 0 ? 0.5 : 1
+                        }}
+                      >-</button>
+                      <span style={{ width: 40, textAlign: "center", fontSize: 16, fontWeight: "bold", color: DS.textPrimary }}>{qty}</span>
+                      <button
+                        onClick={() => setQty(prev => Math.min(product.stock || 10, prev + 1))}
+                        disabled={qty >= (product.stock || 10) || product.stock === 0}
+                        style={{
+                          width: 40, height: 40, borderRadius: DS.radiusMd, border: `1.5px solid ${DS.border}`,
+                          background: DS.bgCard, fontSize: 18, fontWeight: "bold", cursor: "pointer",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          opacity: qty >= (product.stock || 10) || product.stock === 0 ? 0.5 : 1
+                        }}
+                      >+</button>
+                    </div>
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 12 }}>
+                  <Button 
+                    size="lg" 
+                    fullWidth 
+                    onClick={() => { handleAddToCart(product, qty); setCartDrawerOpen(true); }}
+                    disabled={product.stock === 0}
+                  >
+                    🛒 Thêm vào giỏ
+                  </Button>
+                  <Button 
+                    size="lg" 
+                    variant="outline" 
+                    fullWidth 
+                    onClick={() => { handleAddToCart(product, qty); setView("checkout"); }}
+                    disabled={product.stock === 0}
+                  >
+                    Mua ngay
+                  </Button>
+                </div>
               </div>
             )}
             {!isOwner && (

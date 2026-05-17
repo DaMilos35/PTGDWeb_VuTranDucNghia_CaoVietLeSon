@@ -14,6 +14,14 @@ const Review = sequelize.define('Review', {
     type: DataTypes.STRING,
     allowNull: false
   },
+  sellerId: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  date: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
   rating: {
     type: DataTypes.FLOAT,
     allowNull: false,

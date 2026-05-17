@@ -51,7 +51,7 @@ export default function AuthPage() {
       const result = mode === "login"
         ? await fakeApi.login(f.email, f.password)
         : await fakeApi.register(f);
-      handleLogin(result.user);
+      handleLogin(result.user, result.token);
       setView("home");
     } catch (e) {
       setError(e.message);
@@ -75,10 +75,10 @@ export default function AuthPage() {
       const email = `demo@${provider.toLowerCase()}.com`;
       try {
         const res = await fakeApi.login(email, "social");
-        handleLogin(res.user);
+        handleLogin(res.user, res.token);
       } catch (e) {
         const res = await fakeApi.register({ name: `${provider} User`, email, password: "social", avatar: `https://ui-avatars.com/api/?name=${provider}&background=random` });
-        handleLogin(res.user);
+        handleLogin(res.user, res.token);
       }
       setView("home");
     } catch (err) {}

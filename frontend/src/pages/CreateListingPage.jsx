@@ -93,6 +93,7 @@ export default function CreateListingPage() {
     shipping: "0", location: user?.location || LOCATIONS[0], images: [],
     videoUrl: "", tags: [],
     isSponsored: false, comboDiscount: "", comboDesc: "",
+    stock: 1,
   });
 
   useEffect(() => {
@@ -103,6 +104,7 @@ export default function CreateListingPage() {
         shipping: viewData.shipping.toString(),
         comboDiscount: viewData.combo?.discount?.toString() || "",
         comboDesc: viewData.combo?.desc || "",
+        stock: viewData.stock || 1,
       });
       if (viewData.mode === 'boost' || viewData.mode === 'combo') setStep(4);
     }
@@ -179,9 +181,10 @@ export default function CreateListingPage() {
           ...form,
           price: Number(form.price),
           shipping: Number(form.shipping),
+          stock: Number(form.stock || 1),
         });
         showToast("Đã cập nhật tin đăng thành công! ✨");
-        setView("product", { ...viewData, ...form, price: Number(form.price), shipping: Number(form.shipping) });
+        setView("product", { ...viewData, ...form, price: Number(form.price), shipping: Number(form.shipping), stock: Number(form.stock || 1) });
       } else {
         await fakeApi.createListing({
           ...form,
@@ -190,6 +193,7 @@ export default function CreateListingPage() {
           combo: form.comboDiscount ? { discount: Number(form.comboDiscount), desc: form.comboDesc } : null,
           isSponsored: form.isSponsored,
           sellerId: user.id,
+          stock: Number(form.stock || 1),
         });
         setDone(true);
       }
@@ -218,7 +222,7 @@ export default function CreateListingPage() {
           <Button onClick={() => setView("dashboard")} size="lg">📊 Xem Dashboard</Button>
           <Button variant="outline" size="lg" onClick={() => { 
             setStep(1); 
-            setForm({ title: "", category: "c1", condition: "Như mới", description: "", price: "", format: "buy-now", shipping: "0", location: LOCATIONS[0], images: [], tags: [], videoUrl: "" }); 
+            setForm({ title: "", category: "c1", condition: "Như mới", description: "", price: "", format: "buy-now", shipping: "0", location: LOCATIONS[0], images: [], tags: [], videoUrl: "", stock: 1 }); 
             setDone(false); 
           }}>
             ➕ Đăng thêm món khác
@@ -335,6 +339,100 @@ export default function CreateListingPage() {
                   rows={6} 
                   style={{ padding: "14px", borderRadius: DS.radiusMd, border: `1.5px solid ${DS.borderInput}`, fontFamily: "inherit", fontSize: 14, lineHeight: 1.6, outline: "none", resize: "none" }} 
                 />
+              </div>
+              
+              {/* Tình trạng sản phẩm */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <label style={{ fontSize: 13, fontWeight: 600, color: DS.textSecondary }}>Độ cũ mới (Tình trạng)</label>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+                  {[["Như mới", "🌟"], ["Rất tốt", "✨"], ["Tốt", "👍"], ["Khá", "📦"]].map(([cond, icon]) => (
+                    <button
+                      key={cond}
+                      type="button"
+                      onClick={() => set("condition", cond)}
+                      style={{
+                        padding: "12px 8px",
+                        borderRadius: DS.radiusMd,
+                        border: `2px solid ${form.condition === cond ? DS.primary : DS.border}`,
+                        background: form.condition === cond ? DS.primaryLight : "#fff",
+                        color: form.condition === cond ? DS.primary : DS.textSecondary,
+                        fontWeight: 700,
+                        fontSize: 13,
+                        cursor: "pointer",
+                        transition: "all 0.18s",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 6
+                      }}
+                    >
+                      <span style={{ fontSize: 18 }}>{icon}</span>
+                      {cond}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Số lượng hàng */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <label style={{ fontSize: 13, fontWeight: 600, color: DS.textSecondary }}>Số lượng đăng bán</label>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <button
+                    type="button"
+                    onClick={() => set("stock", Math.max(1, (Number(form.stock) || 1) - 1))}
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: DS.radiusMd,
+                      border: `1.5px solid ${DS.border}`,
+                      background: DS.bgCard,
+                      fontSize: 20,
+                      fontWeight: "bold",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: DS.textPrimary
+                    }}
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    value={form.stock || 1}
+                    onChange={(e) => set("stock", Math.max(1, Number(e.target.value) || 1))}
+                    style={{
+                      width: 80,
+                      height: 44,
+                      textAlign: "center",
+                      borderRadius: DS.radiusMd,
+                      border: `1.5px solid ${DS.borderInput}`,
+                      fontSize: 16,
+                      fontWeight: "bold",
+                      outline: "none"
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => set("stock", (Number(form.stock) || 1) + 1)}
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: DS.radiusMd,
+                      border: `1.5px solid ${DS.border}`,
+                      background: DS.bgCard,
+                      fontSize: 20,
+                      fontWeight: "bold",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: DS.textPrimary
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
               </div>
 
               <div style={{ display: "flex", gap: 12 }}>

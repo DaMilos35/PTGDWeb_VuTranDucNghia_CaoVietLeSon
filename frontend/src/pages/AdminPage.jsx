@@ -18,7 +18,8 @@ import {
   LogOut,
   ShieldCheck,
   Tag,
-  Megaphone
+  Megaphone,
+  ShoppingCart
 } from "lucide-react";
 
 // Import modular tabs
@@ -30,6 +31,8 @@ import SettingsTab from "./admin/SettingsTab";
 import PromotionsTab from "./admin/PromotionsTab";
 import VouchersTab from "./admin/VouchersTab";
 import DisputesTab from "./admin/DisputesTab";
+import ReviewsTab from "./admin/ReviewsTab";
+import OrdersTab from "./admin/OrdersTab";
 
 export default function AdminPage() {
   const { setView, showToast } = useApp();
@@ -54,10 +57,12 @@ export default function AdminPage() {
     { id: "overview", label: "Tổng quan", icon: <LayoutDashboard size={20} /> },
     { id: "products", label: "Sản phẩm", icon: <Package size={20} />, badge: pendingCount },
     { id: "users", label: "Người dùng", icon: <Users size={20} /> },
+    { id: "orders", label: "Đơn hàng", icon: <ShoppingCart size={20} /> },
     { id: "reports", label: "Báo cáo", icon: <Flag size={20} />, badge: reportsCount },
     { id: "promotions", label: "Khuyến mãi", icon: <Megaphone size={20} /> },
     { id: "vouchers", label: "Vouchers", icon: <Ticket size={20} /> },
     { id: "disputes", label: "Tranh chấp", icon: <ShieldCheck size={20} /> },
+    { id: "reviews", label: "Đánh giá", icon: <Tag size={20} /> },
     { id: "suggestions", label: "Đề xuất", icon: <Lightbulb size={20} />, badge: suggestions?.filter(s => s.status === 'unread').length },
     { id: "settings", label: "Cài đặt", icon: <Settings size={20} /> },
   ];
@@ -249,8 +254,16 @@ export default function AdminPage() {
             <VouchersTab />
           )}
 
+          {activeTab === "orders" && (
+            <OrdersTab users={users} onRefresh={handleRefresh} />
+          )}
+
           {activeTab === "disputes" && (
             <DisputesTab />
+          )}
+
+          {activeTab === "reviews" && (
+            <ReviewsTab products={products} users={users} onRefresh={handleRefresh} />
           )}
 
           {activeTab === "suggestions" && (

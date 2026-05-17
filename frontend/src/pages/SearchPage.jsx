@@ -16,6 +16,8 @@ export default function SearchPage() {
   const [sortBy, setSortBy] = useState(searchState.sortBy);
   const [viewMode, setViewMode] = useState("grid");
   const [filterOpen, setFilterOpen] = useState({ category: true, condition: true, format: true, price: true, brand: true, rating: true });
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 12;
 
   // Debounce the query and filters to avoid excessive API calls
   const debouncedQuery = useDebounce(query, 400);
@@ -37,7 +39,7 @@ export default function SearchPage() {
     return { ...f, [k]: [...arr, v] };
   });
 
-  const clear = () => { setFilters({ condition: [], format: [], minPrice: "", maxPrice: "", category: [], location: "", brand: [], rating: "" }); setQuery(""); setGlobalSearch(""); };
+  const clear = () => { setFilters({ condition: [], format: [], minPrice: "", maxPrice: "", category: [], location: "", brand: [], rating: "" }); setQuery(""); setGlobalSearch(""); setCurrentPage(1); };
 
   useEffect(() => {
     if (globalSearch !== query) {
@@ -75,13 +77,36 @@ export default function SearchPage() {
     return new Date(b.createdAt) - new Date(a.createdAt);
   });
 
+  // Reset page when filters/sort/query change
+  useEffect(() => { setCurrentPage(1); }, [JSON.stringify(debouncedFilters), debouncedQuery, sortBy]);
+
+  const totalPages = Math.ceil(sorted.length / ITEMS_PER_PAGE);
+  const paginated = sorted.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+  // Build page number array with ellipsis
+  const getPageNumbers = () => {
+    const pages = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 4) pages.push("...");
+      const start = Math.max(2, currentPage - 2);
+      const end = Math.min(totalPages - 1, currentPage + 2);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (currentPage < totalPages - 3) pages.push("...");
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
   const toggle = (section) => setFilterOpen(o => ({ ...o, [section]: !o[section] }));
 
   return (
     <div style={{ maxWidth: 1360, margin: "0 auto", padding: "32px 24px", fontFamily: "Be Vietnam Pro, sans-serif", display: "flex", gap: 28 }}>
 
       {/* Sidebar */}
-      <aside style={{ width: 252, flexShrink: 0, background: "#fff", borderRadius: DS.radiusLg, border: `1px solid ${DS.border}`, padding: 22, maxHeight: "calc(100vh - 100px)", overflowY: "auto", position: "sticky", top: 80, boxShadow: DS.shadowSm, scrollbarWidth: "thin" }}>
+      <aside style={{ width: 252, flexShrink: 0, background: "#fff", borderRadius: DS.radiusLg, border: `1px solid ${DS.border}`, padding: 22, position: "sticky", top: 90, height: "fit-content", boxShadow: DS.shadowSm }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h3 style={{ fontWeight: 800, fontSize: 16, color: DS.textPrimary }}>
             Bộ lọc {activeCount > 0 && <span style={{ marginLeft: 6, background: DS.primary, color: "#fff", borderRadius: DS.radiusFull, fontSize: 11, padding: "1px 7px", fontWeight: 700 }}>{activeCount}</span>}
@@ -124,7 +149,7 @@ export default function SearchPage() {
                 <input type="checkbox" checked={filters.condition.length === 0} onChange={() => toggleF("condition", "")} style={{ accentColor: DS.primary }} />
                 <span style={{ fontSize: 13, color: filters.condition.length === 0 ? DS.primary : DS.textSecondary, fontWeight: filters.condition.length === 0 ? 700 : 400 }}>Tất cả tình trạng</span>
               </label>
-              {[["Như mới","🌟"],["Rất tốt","✨"],["Tốt","👍"],["Khá","📦"]].map(([c,e]) => (
+              {[["Như mới", "🌟"], ["Rất tốt", "✨"], ["Tốt", "👍"], ["Khá", "📦"]].map(([c, e]) => (
                 <label key={c} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 8px", borderRadius: DS.radiusMd, cursor: "pointer", background: filters.condition.includes(c) ? DS.primaryLight : "transparent", marginBottom: 2, transition: "all 0.15s" }}>
                   <input type="checkbox" checked={filters.condition.includes(c)} onChange={() => toggleF("condition", c)} style={{ accentColor: DS.primary }} />
                   <span style={{ fontSize: 13, color: filters.condition.includes(c) ? DS.primary : DS.textSecondary, fontWeight: filters.condition.includes(c) ? 700 : 400 }}>{e} {c}</span>
@@ -146,7 +171,7 @@ export default function SearchPage() {
                 <input type="checkbox" checked={filters.format.length === 0} onChange={() => toggleF("format", "")} style={{ accentColor: DS.primary }} />
                 <span style={{ fontSize: 13, color: filters.format.length === 0 ? DS.primary : DS.textSecondary, fontWeight: filters.format.length === 0 ? 700 : 400 }}>Tất cả loại</span>
               </label>
-              {[["buy-now","🛒 Mua ngay"],["auction","⏱ Đấu giá"]].map(([v,l]) => (
+              {[["buy-now", "🛒 Mua ngay"], ["auction", "⏱ Đấu giá"]].map(([v, l]) => (
                 <label key={v} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 8px", borderRadius: DS.radiusMd, cursor: "pointer", background: filters.format.includes(v) ? DS.primaryLight : "transparent", marginBottom: 2, transition: "all 0.15s" }}>
                   <input type="checkbox" checked={filters.format.includes(v)} onChange={() => toggleF("format", v)} style={{ accentColor: DS.primary }} />
                   <span style={{ fontSize: 13, color: filters.format.includes(v) ? DS.primary : DS.textSecondary, fontWeight: filters.format.includes(v) ? 700 : 400 }}>{l}</span>
@@ -185,20 +210,20 @@ export default function SearchPage() {
               }
             `}</style>
             <div style={{ position: "absolute", top: 10, left: 0, right: 0, height: 4, background: DS.borderInput, borderRadius: 2 }}></div>
-            <div style={{ position: "absolute", top: 10, left: `${(Number(filters.minPrice||0)/30000000)*100}%`, right: `${100 - (Number(filters.maxPrice||30000000)/30000000)*100}%`, height: 4, background: DS.primary, borderRadius: 2 }}></div>
-            
-            <input 
-              type="range" min="0" max="30000000" step="100000" 
-              value={filters.minPrice || 0} 
-              onChange={e => setF("minPrice", Math.min(Number(e.target.value), Number(filters.maxPrice || 30000000)))} 
-              style={{ position: "absolute", width: "100%", pointerEvents: "none", zIndex: (filters.minPrice||0) > 15000000 ? 5 : 3, margin: 0, top: 4 }} 
+            <div style={{ position: "absolute", top: 10, left: `${(Number(filters.minPrice || 0) / 30000000) * 100}%`, right: `${100 - (Number(filters.maxPrice || 30000000) / 30000000) * 100}%`, height: 4, background: DS.primary, borderRadius: 2 }}></div>
+
+            <input
+              type="range" min="0" max="30000000" step="100000"
+              value={filters.minPrice || 0}
+              onChange={e => setF("minPrice", Math.min(Number(e.target.value), Number(filters.maxPrice || 30000000)))}
+              style={{ position: "absolute", width: "100%", pointerEvents: "none", zIndex: (filters.minPrice || 0) > 15000000 ? 5 : 3, margin: 0, top: 4 }}
               className="dual-slider"
             />
-            <input 
-              type="range" min="0" max="30000000" step="100000" 
-              value={filters.maxPrice || 30000000} 
-              onChange={e => setF("maxPrice", Math.max(Number(e.target.value), Number(filters.minPrice || 0)))} 
-              style={{ position: "absolute", width: "100%", pointerEvents: "none", zIndex: 4, margin: 0, top: 4 }} 
+            <input
+              type="range" min="0" max="30000000" step="100000"
+              value={filters.maxPrice || 30000000}
+              onChange={e => setF("maxPrice", Math.max(Number(e.target.value), Number(filters.minPrice || 0)))}
+              style={{ position: "absolute", width: "100%", pointerEvents: "none", zIndex: 4, margin: 0, top: 4 }}
               className="dual-slider"
             />
           </div>
@@ -300,7 +325,7 @@ export default function SearchPage() {
 
         {/* Toolbar */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-          <p style={{ color: DS.textMuted, fontSize: 14 }}>Tìm thấy <strong style={{ color: DS.textPrimary }}>{sorted.length}</strong> kết quả</p>
+          <p style={{ color: DS.textMuted, fontSize: 14 }}>Tìm thấy <strong style={{ color: DS.textPrimary }}>{sorted.length}</strong> kết quả{totalPages > 1 && <span style={{ marginLeft: 8, color: DS.textMuted }}>(Trang {currentPage}/{totalPages})</span>}</p>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ padding: "7px 12px", borderRadius: DS.radiusMd, border: `1.5px solid ${DS.border}`, fontFamily: "Be Vietnam Pro, sans-serif", fontSize: 13, color: DS.textSecondary, background: DS.bgCard, cursor: "pointer", outline: "none" }}>
               <option value="relevance">Mức độ liên quan</option>
@@ -310,7 +335,7 @@ export default function SearchPage() {
               <option value="popular">Phổ biến nhất</option>
             </select>
             <div style={{ display: "flex", gap: 4 }}>
-              {[["grid","⊞"],["list","☰"]].map(([m,icon]) => (
+              {[["grid", "⊞"], ["list", "☰"]].map(([m, icon]) => (
                 <button key={m} onClick={() => setViewMode(m)} style={{ width: 34, height: 34, borderRadius: DS.radiusMd, border: `1.5px solid ${viewMode === m ? DS.primary : DS.border}`, background: viewMode === m ? DS.primaryLight : DS.bgCard, color: viewMode === m ? DS.primary : DS.textMuted, cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>{icon}</button>
               ))}
             </div>
@@ -327,11 +352,11 @@ export default function SearchPage() {
           </div>
         ) : viewMode === "grid" ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))", gap: 18 }}>
-            {sorted.map(p => <ProductCard key={p.id} product={p} watched={watchedIds?.includes(p.id)} onWatch={handleWatch} onClick={prod => { setSelectedProduct(prod); setView("product"); }} />)}
+            {paginated.map(p => <ProductCard key={p.id} product={p} watched={watchedIds?.includes(p.id)} onWatch={handleWatch} onClick={prod => { setSelectedProduct(prod); setView("product"); }} />)}
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {sorted.map(p => (
+            {paginated.map(p => (
               <div key={p.id} onClick={() => { setSelectedProduct(p); setView("product"); }} style={{ background: "#fff", borderRadius: DS.radiusLg, border: `1.5px solid ${DS.border}`, padding: 16, display: "flex", gap: 16, alignItems: "center", cursor: "pointer", transition: "all 0.2s", boxShadow: DS.shadowSm }} onMouseEnter={e => { e.currentTarget.style.borderColor = DS.primary; e.currentTarget.style.boxShadow = DS.shadowMd; }} onMouseLeave={e => { e.currentTarget.style.borderColor = DS.border; e.currentTarget.style.boxShadow = DS.shadowSm; }}>
                 <img src={p.images[0]} alt="" style={{ width: 80, height: 80, borderRadius: DS.radiusMd, objectFit: "cover", flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -344,6 +369,63 @@ export default function SearchPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, marginTop: 36, flexWrap: "wrap" }}>
+            {/* Prev button */}
+            <button
+              onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+              disabled={currentPage === 1}
+              style={{
+                padding: "8px 16px", borderRadius: DS.radiusMd,
+                border: `1.5px solid ${currentPage === 1 ? DS.border : DS.primary}`,
+                background: currentPage === 1 ? DS.bgHover : DS.primaryLight,
+                color: currentPage === 1 ? DS.textMuted : DS.primary,
+                cursor: currentPage === 1 ? "not-allowed" : "pointer",
+                fontFamily: "Be Vietnam Pro, sans-serif", fontWeight: 600, fontSize: 13,
+                transition: "all 0.18s"
+              }}
+            >‹ Trước</button>
+
+            {/* Page numbers */}
+            {getPageNumbers().map((page, idx) =>
+              page === "..." ? (
+                <span key={`ellipsis-${idx}`} style={{ padding: "8px 4px", color: DS.textMuted, fontSize: 14 }}>…</span>
+              ) : (
+                <button
+                  key={page}
+                  onClick={() => { setCurrentPage(page); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  style={{
+                    width: 38, height: 38, borderRadius: DS.radiusMd,
+                    border: `1.5px solid ${currentPage === page ? DS.primary : DS.border}`,
+                    background: currentPage === page ? DS.primary : DS.bgCard,
+                    color: currentPage === page ? "#fff" : DS.textSecondary,
+                    cursor: "pointer",
+                    fontFamily: "Be Vietnam Pro, sans-serif", fontWeight: currentPage === page ? 700 : 400, fontSize: 14,
+                    transition: "all 0.18s",
+                    boxShadow: currentPage === page ? `0 2px 8px ${DS.primary}44` : "none"
+                  }}
+                >{page}</button>
+              )
+            )}
+
+            {/* Next button */}
+            <button
+              onClick={() => { setCurrentPage(p => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+              disabled={currentPage === totalPages}
+              style={{
+                padding: "8px 16px", borderRadius: DS.radiusMd,
+                border: `1.5px solid ${currentPage === totalPages ? DS.border : DS.primary}`,
+                background: currentPage === totalPages ? DS.bgHover : DS.primaryLight,
+                color: currentPage === totalPages ? DS.textMuted : DS.primary,
+                cursor: currentPage === totalPages ? "not-allowed" : "pointer",
+                fontFamily: "Be Vietnam Pro, sans-serif", fontWeight: 600, fontSize: 13,
+                transition: "all 0.18s"
+              }}
+            >Sau ›</button>
           </div>
         )}
       </div>

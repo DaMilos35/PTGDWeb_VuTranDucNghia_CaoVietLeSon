@@ -10,7 +10,22 @@ export default function ProductCard({ product, onClick, onWatch, watched }) {
   const [hovered, setHovered] = useState(false);
   const [activeImg, setActiveImg] = useState(0);
   const [imgError, setImgError] = useState(false);
-  const totalImgs = product.images?.length || 1;
+  // Safe parsing for images
+  let imagesArray = [];
+  try {
+    if (Array.isArray(product.images)) {
+      imagesArray = product.images;
+    } else if (typeof product.images === "string") {
+      const parsed = JSON.parse(product.images);
+      imagesArray = Array.isArray(parsed) ? parsed : [product.images];
+    } else {
+      imagesArray = [];
+    }
+  } catch (e) {
+    imagesArray = typeof product.images === "string" ? [product.images] : [];
+  }
+
+  const totalImgs = imagesArray.length || 1;
 
   const nextImg = (e) => {
     e.stopPropagation();
@@ -52,7 +67,7 @@ export default function ProductCard({ product, onClick, onWatch, watched }) {
               transform: `translateX(-${activeImg * 100}%)`,
               opacity: hovered && (product.videoUrl || product.video) ? 0 : 1 
             }}>
-              {product.images.map((img, idx) => (
+              {imagesArray.map((img, idx) => (
                 <div key={idx} style={{ width: "100%", height: "100%", flexShrink: 0, position: "relative" }}>
                   {/* Shimmer skeleton background */}
                   <div className="skeleton" style={{ position: "absolute", inset: 0, zIndex: 0 }} />

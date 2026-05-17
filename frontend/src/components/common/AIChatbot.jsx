@@ -3,80 +3,14 @@ import { DS } from "../../design/tokens";
 import { useApp } from "../../context/AppContext";
 import fakeApi from "../../database/fakeApi";
 
-const KNOWLEDGE_BASE = [
-  // Mua hàng
-  { keys: ["mua", "cách mua", "hướng dẫn mua"], reply: "Để mua hàng, bạn chỉ cần chọn sản phẩm, nhấn 'Thêm vào giỏ' hoặc 'Mua ngay', sau đó điền thông tin giao hàng ở trang Thanh toán nhé!" },
-  { keys: ["đơn hàng của tôi", "xem đơn", "theo dõi đơn"], reply: "Bạn có thể theo dõi đơn hàng tại mục 'Đơn hàng' trong menu tài khoản cá nhân. Tất cả trạng thái vận chuyển sẽ được cập nhật tại đó." },
-  { keys: ["hủy đơn", "hủy mua"], reply: "Bạn có thể hủy đơn hàng nếu người bán chưa xác nhận gửi hàng. Hãy vào mục 'Đơn hàng' -> 'Chi tiết' -> 'Hủy đơn'." },
-  { keys: ["trả hàng", "hoàn tiền", "chính sách hoàn"], reply: "HMO có chính sách bảo vệ người mua trong 3 ngày kể từ khi nhận hàng. Nếu hàng lỗi, sai mô tả, bạn hãy chọn 'Yêu cầu Trả hàng/Hoàn tiền' ngay trong chi tiết đơn." },
-  // Bán hàng
-  { keys: ["bán", "đăng bán", "cách bán"], reply: "Để đăng bán, bạn nhấn nút 'ĐĂNG BÁN' màu xanh trên thanh điều hướng, sau đó tải ảnh lên, điền tên, giá và mô tả nhé!" },
-  { keys: ["phí", "hoa hồng", "chiết khấu"], reply: "HMO thu phí nền tảng là 5% trên mỗi đơn hàng thành công để duy trì dịch vụ bảo vệ thanh toán an toàn cho cả hai bên." },
-  { keys: ["sửa thông tin", "sửa sản phẩm", "sửa giá"], reply: "Bạn có thể chỉnh sửa giá và mô tả trong mục 'Hồ sơ' -> 'Sản phẩm của tôi', chọn sản phẩm cần sửa và nhấn nút 'Chỉnh sửa'." },
-  { keys: ["đẩy tin", "bán nhanh", "quảng cáo"], reply: "Tính năng Đẩy tin hiện đang được phát triển, giúp sản phẩm của bạn xuất hiện trên đầu trang tìm kiếm. Bạn đón chờ nhé!" },
-  // Thanh toán & Vận chuyển
-  { keys: ["thanh toán", "cách trả tiền", "phương thức"], reply: "HMO hỗ trợ thanh toán qua Ví HMO (Coins), Chuyển khoản ngân hàng, Thẻ tín dụng và COD (Thanh toán khi nhận hàng)." },
-  { keys: ["ví hmo", "nạp tiền", "rút tiền"], reply: "Ví HMO (Coins) giúp bạn mua hàng nhanh chóng và nhận hoàn tiền. Bạn có thể nạp/rút tiền tại mục 'Hồ sơ' -> 'Quản lý số dư'." },
-  { keys: ["phí ship", "tiền ship", "phí vận chuyển"], reply: "Phí ship phụ thuộc vào khoảng cách và kích thước món hàng. Phí này sẽ được tính tự động tại bước Thanh toán." },
-  { keys: ["ship cod", "cod"], reply: "Chúng mình có hỗ trợ ship COD. Bạn có thể kiểm tra hàng trước khi thanh toán cho shipper nhé!" },
-  { keys: ["thời gian giao", "bao lâu nhận"], reply: "Thời gian giao hàng thường từ 1-3 ngày đối với nội thành, và 3-5 ngày đối với ngoại tỉnh." },
-  // Thương lượng & Chat
-  { keys: ["mặc cả", "thương lượng", "trả giá", "deal"], reply: "Bạn hoàn toàn có thể thương lượng giá bằng cách nhấn vào nút 'Chat & Trả giá' trong trang chi tiết sản phẩm." },
-  { keys: ["chat", "nhắn tin"], reply: "Tính năng Chat giúp bạn trao đổi trực tiếp với người bán. Hãy hỏi thêm hình ảnh thực tế nếu cần nhé!" },
-  // Flash Sale & Khuyến mãi
-  { keys: ["flash sale", "khuyến mãi", "sale", "giảm giá"], reply: "HMO có các đợt Flash Sale vào 12h trưa và 8h tối mỗi ngày. Bạn hãy canh giờ để săn deal sốc nhé!" },
-  { keys: ["voucher", "mã giảm giá", "coupon"], reply: "Hiện tại hệ thống có mã NEWUSER50K giảm 50k cho đơn đầu tiên và FREESHIP để miễn phí vận chuyển!" },
-  // Bảo vệ an toàn
-  { keys: ["an toàn", "bảo vệ", "scam", "lừa đảo"], reply: "Bạn yên tâm nhé! HMO giữ tiền của bạn (Escrow) và chỉ thanh toán cho người bán khi bạn xác nhận đã nhận hàng đúng như mô tả." },
-  { keys: ["kiểm duyệt", "chờ duyệt"], reply: "Mọi sản phẩm trên HMO đều được Admin kiểm duyệt để đảm bảo chất lượng. Quá trình duyệt mất tối đa 30 phút." },
-  { keys: ["báo cáo", "report", "vi phạm"], reply: "Nếu phát hiện hàng giả hoặc lừa đảo, bạn hãy nhấn nút 'Báo cáo vi phạm' trên trang sản phẩm để Admin xử lý nhé." },
-  // Tài khoản
-  { keys: ["quên mật khẩu", "mật khẩu"], reply: "Bạn có thể khôi phục mật khẩu ở màn hình Đăng nhập bằng cách nhấn vào 'Quên mật khẩu' và làm theo hướng dẫn qua email." },
-  { keys: ["xác thực", "tích xanh", "verify"], reply: "Xác thực danh tính (Tích xanh) giúp tăng độ uy tín khi bán hàng. Hãy vào mục 'Cài đặt' -> 'Xác thực tài khoản'." },
-  { keys: ["đổi tên", "đổi avatar"], reply: "Bạn có thể thay đổi Avatar và Tên hiển thị trong phần 'Hồ sơ' -> 'Chỉnh sửa thông tin'." },
-  // Khác
-  { keys: ["hướng dẫn", "tutorial"], action: "START_TUTORIAL" },
-  { keys: ["chào", "hello", "hi", "xin chào"], reply: "Chào bạn! Mình là Trợ lý AI của HMO. Mình có thể giúp gì cho bạn hôm nay?" },
-];
-
-// ─── Mega Knowledge Base ───────────────────────────────────────────────────────
-const KB = [
-  { p: /(mua|cách mua|đặt hàng|đặt mua|muốn mua|tìm mua)/i, r: "Mua hàng dễ:\n1️⃣ Tìm sản phẩm → bấm 'Mua ngay'\n2️⃣ Chọn địa chỉ nhận hàng\n3️⃣ Thanh toán qua Escrow bảo mật\n✅ Tiền chỉ về người bán khi bạn xác nhận!\n\nBạn đang tìm đồ gì ạ?" },
-  { p: /(bán|cách bán|đăng bán|đăng tin|muốn bán)/i, r: "Đăng bán siêu nhanh:\n1️⃣ Bấm nút ➕ Đăng bán\n2️⃣ Chụp 3-5 ảnh rõ nét\n3️⃣ Viết mô tả + định giá\n4️⃣ Đăng và chờ người mua!\n💡 Ảnh đẹp + mô tả chi tiết bán nhanh gấp 3 lần!" },
-  { p: /(đơn hàng|kiểm tra đơn|giao hàng|vận chuyển|ship|theo dõi)/i, r: "Trạng thái đơn hàng:\n📝 Chờ xác nhận → ✅ Đã xác nhận → 🚚 Đang giao → 🎉 Hoàn thành\n\nVào menu → Đơn hàng. Người mua/bán thấy giao diện khác nhau nhé!" },
-  { p: /(lừa đảo|scam|an toàn|bảo vệ|hoàn tiền|tranh chấp|khiếu nại|tố cáo)/i, r: "Nền tảng bảo vệ bạn 100%:\n🛡️ Escrow: tiền giữ trung gian\n🔄 Hoàn tiền nếu hàng sai mô tả (7 ngày)\n⚠️ Báo cáo vi phạm trên profile\n📞 CSKH xử lý trong 24h" },
-  { p: /(phí|hoa hồng|chi phí|phần trăm|fee|mất tiền)/i, r: "Biểu phí công khai:\n✅ Đăng tin: Miễn phí\n💳 Phí giao dịch: 5% / đơn thành công\n🚚 Ship: 20k-50k tùy đơn vị\n💡 Không phí ẩn, không tự trừ!" },
-  { p: /(voucher|mã giảm|khuyến mãi|sale|discount|ưu đãi|coupon)/i, r: "Kho voucher tại Cài đặt → Kho Voucher 🎟️\nHiện có:\n🎁 Giảm 50k cho đơn từ 200k\n🚚 Freeship mọi đơn\n💡 Mã tự áp dụng khi checkout!" },
-  { p: /(đổi trả|return|refund|hoàn hàng|trả lại)/i, r: "Chính sách đổi trả:\n✅ 7 ngày nếu hàng lỗi/sai mô tả\n❌ Không áp dụng sau khi đã xác nhận OK\n📸 Quay video unbox làm bằng chứng nhé!" },
-  { p: /(thanh toán|payment|chuyển khoản|momo|vnpay|zalopay|thẻ)/i, r: "Hỗ trợ thanh toán:\n💳 Visa/Master/ATM\n📱 MoMo, ZaloPay, VNPay\n🏦 Chuyển khoản ngân hàng\nTất cả qua Escrow bảo mật 🔒" },
-  { p: /(tài khoản|đăng ký|đăng nhập|quên mật khẩu|mật khẩu|hồ sơ|profile)/i, r: "Quản lý tài khoản:\n👤 Cài đặt → Hồ sơ: ảnh, tên, SĐT\n🔑 Cài đặt → Đổi mật khẩu\n🔔 Cài đặt → Thông báo\nBạn cần hỗ trợ bước nào?" },
-  { p: /(xu|coin|điểm|thưởng|loyalty|tích điểm)/i, r: "Hệ thống Xu:\n🪙 Kiếm: Mua hàng, Đánh giá, Giới thiệu bạn bè\n💎 Dùng: Giảm giá đơn tiếp, Đổi voucher\nXem tại menu → Xu!" },
-  { p: /(đánh giá|review|sao|rating|nhận xét)/i, r: "Đánh giá sau khi nhận hàng để nhận xu thưởng! ⭐\nĐánh giá công bằng giúp cộng đồng an toàn hơn 😊" },
-  { p: /(giá|định giá|bao nhiêu|rẻ|đắt|giá tốt|thị trường)/i, r: "Tips định giá:\n📊 Tham khảo sản phẩm tương tự\n💰 Đồ cũ rẻ hơn mới 30-70%\n🏷️ Tình trạng tốt → giá cao hơn\nBạn muốn định giá món gì?" },
-  { p: /(quần áo|thời trang|áo|quần|váy|fashion|vintage|outfit)/i, r: "Thời trang 2ndHand đang trending! 👗\nHàng vintage, hàng hiệu second-hand giá siêu tốt.\nFilter 'Thời trang' để xem hàng trăm món đẹp nhé!" },
-  { p: /(điện thoại|iphone|samsung|điện tử|laptop|máy tính|tablet|tech)/i, r: "Đồ công nghệ hot nhất nền tảng! 📱\nKiểm tra kỹ mô tả, yêu cầu video test trước khi mua.\nNhớ test máy ngay khi nhận hàng nhé!" },
-  { p: /(thời tiết|nhiệt độ|mưa|nắng|weather)/i, r: "Mình không giỏi dự báo thời tiết 😄 Nhưng trời mưa thì ở nhà lướt 2ndHand săn áo khoác / đồ mưa cũng hay! Muốn xem không?" },
-  { p: /(ăn gì|đói|đồ ăn|food|nhà hàng|quán ăn)/i, r: "Đói rồi à? 😄 Mình chỉ giỏi đồ 2ndHand thôi. Nhưng đồ bếp cũ xịn trên đây nhiều: nồi, chảo, máy xay... Bạn thử xem không?" },
-  { p: /(buồn|stress|mệt|chán|lo|tâm sự|khó chịu)/i, r: "Mình nghe bạn rồi 🥺 Retail therapy thật sự hiệu quả đấy! Lướt 2ndHand tìm vài món đồ xinh giá hợp lý, biết đâu tìm được deal hời làm tâm trạng vui hơn?" },
-  { p: /(game|chơi game|gaming|xbox|playstation|controller|tai nghe)/i, r: "Gamer hiểu nhau! 🎮 Gear gaming second-hand xịn và rẻ hơn nhiều: tai nghe, tay cầm, màn hình, ghế... Bạn cần item gì?" },
-  { p: /(xin chào|chào|hello|hi |alo|hey|yo)/i, r: "Xin chào! 👋 Mình là Trợ lý 2ndHand, hỗ trợ 24/7!\n\nMình giúp được:\n🛍️ Tìm mua đồ cũ\n💰 Tư vấn đăng bán\n📦 Theo dõi đơn hàng\n🛡️ Xử lý khiếu nại\n\nBạn cần gì hôm nay?" },
-  { p: /(cảm ơn|thanks|ok|được|tốt|hay|tuyệt)/i, r: "Không có gì! 😊 Cứ hỏi thêm bất cứ lúc nào nhé. Chúc bạn mua sắm vui! 🎉" },
-  { p: /(cskh|nhân viên|người thật|tư vấn viên|hỗ trợ trực tiếp)/i, r: "Mình chuyển bạn đến CSKH ngay! 🎧\nĐã ghi nhận vấn đề. Anh/chị sẽ phản hồi trong 15-30 phút nhé!" },
-];
-
-const smartReply = (text) => {
-  for (const rule of KB) {
-    if (rule.p.test(text)) return rule.r;
-  }
-  // Generic fallback - extract keywords and respond intelligently
-  const words = text.trim().split(/\s+/);
-  const kw = words.find(w => w.length > 3) || text.substring(0, 10);
-  const fallbacks = [
-    `Mình hiểu bạn đang hỏi về "${kw}". Chủ đề này mình cần tra thêm! Trong lúc đó, bạn có muốn mình hỗ trợ tìm sản phẩm liên quan trên 2ndHand không?`,
-    `Câu hỏi hay đó! Về "${kw}" thì mình sẽ ghi nhận và cải thiện. Bạn cũng có thể liên hệ CSKH để được tư vấn chi tiết hơn nhé 🎧`,
-    `Mình chưa có thông tin về "${kw}" ngay lúc này. Nhưng mình đoán bạn đang quan tâm đến mua/bán đồ cũ? Mình sẵn sàng hỗ trợ bạn!`,
-  ];
-  return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+const markdownify = (text) => {
+  if (!text) return "";
+  let html = text.replace(/[&<>]/g, t => ({ '&':'&amp;','<':'&lt;','>':'&gt;' }[t]));
+  html = html.replace(/(\*\*|__)(.*?)\1/g, '<b>$2</b>');
+  html = html.replace(/(\*|_)(.*?)\1/g, '<i>$2</i>');
+  html = html.replace(/`([^`]+)`/g, '<code style="background:rgba(0,0,0,0.05);padding:2px 4px;border-radius:4px;">$1</code>');
+  html = html.replace(/\n/g, '<br/>');
+  return html;
 };
 
 // ─── Component ─────────────────────────────────────────────────────────────────
@@ -186,55 +120,71 @@ export default function AIChatbot() {
   }, []);
 
   // ── SEND MESSAGE ─────────────────────────────────────────────────────────────
-  // Strip emoji prefix from quick actions like "🛍️ Mua hàng" → "Mua hàng"
-  const cleanText = (t) => t.replace(/^[\u{1F300}-\u{1FAD6}\u{2600}-\u{27BF}\s]+/u, "").trim();
-
-  // Follow-up suggestions per intent
-  const FOLLOWUPS = {
-    mua_hang: ["Làm sao trả hàng?", "Phí ship bao nhiêu?", "Thanh toán như thế nào?"],
-    ban_hang: ["Phí bán hàng là bao nhiêu?", "Làm sao thu tiền?", "Đăng tin miễn phí không?"],
-    don_hang: ["Tiền hoàn khi nào?", "Ship bao lâu tới?", "Liên hệ người bán thế nào?"],
-    an_toan: ["Escrow là gì?", "Bị lừa thì làm sao?", "Gặp CSKH"],
-    phi: ["Phí ship tính sao?", "Miễn phí đăng tin không?", "Có khuyến mãi phí không?"],
-    voucher: ["Làm sao dùng mã?", "Tìm deal flash sale?", "Cách nhận thêm voucher?"],
-    thanh_toan: ["MoMo có được không?", "Có thể COD không?", "Thanh toán có an toàn không?"],
-    default: ["Hướng dẫn mua hàng", "Chính sách đổi trả", "Gặp CSKH"],
-  };
-
-  const getFollowups = (text) => {
-    if (/(mua|đặt hàng)/i.test(text)) return FOLLOWUPS.mua_hang;
-    if (/(bán|đăng)/i.test(text)) return FOLLOWUPS.ban_hang;
-    if (/(đơn hàng|ship|giao)/i.test(text)) return FOLLOWUPS.don_hang;
-    if (/(an toàn|lừa|scam|bảo vệ)/i.test(text)) return FOLLOWUPS.an_toan;
-    if (/(phí|fee)/i.test(text)) return FOLLOWUPS.phi;
-    if (/(voucher|mã|khuyến)/i.test(text)) return FOLLOWUPS.voucher;
-    if (/(thanh toán|momo|vnpay)/i.test(text)) return FOLLOWUPS.thanh_toan;
-    return FOLLOWUPS.default;
-  };
-
   const handleSend = async (preset = null) => {
     const raw = preset || input.trim();
     if (!raw) return;
-    const text = cleanText(raw); // clean for matching
-    const displayText = raw; // show original with emoji
 
-    const userMsg = { id: Date.now(), sender: "user", type: "text", text: displayText, time: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) };
+    const userMsg = { id: Date.now(), sender: "user", type: "text", text: raw, time: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) };
     setMessages(p => [...p, userMsg]);
-    setInput(""); setIsTyping(true);
+    setInput(""); 
+    setIsTyping(true);
 
-    const delay = 800 + Math.min(text.length * 18, 1200) + Math.random() * 300;
-    setTimeout(() => {
-      const reply = smartReply(text);
-      const followups = getFollowups(text);
+    try {
+      const historyText = messages
+        .filter(m => m.type !== "image")
+        .map(m => `${m.sender === "user" ? "User" : "Assistant"}: ${m.text}`)
+        .join("\n");
+      
+      const systemPrompt = `Bạn là HMO Concierge - trợ lý AI cực kỳ thông minh của nền tảng thương mại đồ cũ Hand-Me-On.
+Nhiệm vụ: Tư vấn, hỗ trợ mua bán, giải đáp thắc mắc về chính sách một cách ngắn gọn, chuyên nghiệp và thân thiện.
+Thông tin Hand-Me-On:
+- Phí giao dịch: 5% cho mỗi đơn thành công. Miễn phí đăng tin.
+- Chính sách hoàn tiền 7 ngày nếu hàng sai mô tả. Tiền được giữ an toàn qua hệ thống Escrow.
+- Khuyến mãi đang có: Mã "NEWUSER50K" giảm 50k, mã "WELCOME7" giảm 7%.
+- Bạn xưng là "mình" và gọi người dùng là "bạn". Sử dụng emoji phù hợp.
+Hãy trả lời câu hỏi dưới đây của người dùng, nếu câu hỏi nằm ngoài chuyên môn mua bán thì từ chối khéo léo. Trả lời bằng Markdown.`;
+
+      const fullPrompt = `${systemPrompt}\n\n${historyText}\nUser: ${raw}\nAssistant:`;
+
+      const botMsgId = Date.now() + 1;
       const botMsg = {
-        id: Date.now() + 1, sender: "ai", type: "text",
-        text: reply,
-        time: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
-        followups // attach follow-up suggestions
+        id: botMsgId, sender: "ai", type: "text",
+        text: "",
+        time: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
       };
+      
       setMessages(p => [...p, botMsg]);
       setIsTyping(false);
-    }, delay);
+
+      if (window.puter && window.puter.ai) {
+        // Stream text using Puter AI SDK
+        const stream = await window.puter.ai.chat(fullPrompt, { stream: true });
+        let fullText = "";
+        for await (const part of stream) {
+          if (part?.text) {
+            fullText += part.text;
+            setMessages(prev => {
+              const newMsgs = [...prev];
+              const targetIdx = newMsgs.findIndex(m => m.id === botMsgId);
+              if (targetIdx !== -1) newMsgs[targetIdx].text = fullText;
+              return newMsgs;
+            });
+          }
+        }
+      } else {
+        // Fallback if Puter is not loaded
+        setMessages(prev => {
+          const newMsgs = [...prev];
+          const targetIdx = newMsgs.findIndex(m => m.id === botMsgId);
+          if (targetIdx !== -1) newMsgs[targetIdx].text = "Xin lỗi, hệ thống AI hiện chưa sẵn sàng do mạng hoặc SDK chưa tải xong. Vui lòng thử lại sau vài giây!";
+          return newMsgs;
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      setMessages(prev => [...prev, { id: Date.now() + 2, sender: "ai", type: "text", text: "❌ Lỗi kết nối AI: " + err.message }]);
+      setIsTyping(false);
+    }
   };
 
   const handleImage = async (e) => {
@@ -361,9 +311,7 @@ export default function AIChatbot() {
                 borderBottomRightRadius: m.sender === "user" ? 4 : 16,
                 borderBottomLeftRadius: m.sender === "ai" ? 4 : 16,
                 boxShadow: DS.shadowSm, fontSize: 14, lineHeight: 1.5
-              }}>
-                {m.text}
-              </div>
+              }} dangerouslySetInnerHTML={{ __html: markdownify(m.text) }} />
               <div style={{ fontSize: 11, color: DS.textMuted, marginTop: 6, textAlign: m.sender === "user" ? "right" : "left" }}>
                 {m.sender === "ai" ? "AI Assistant" : "Bạn"}
               </div>

@@ -9,7 +9,7 @@ import Button from "../components/common/Button";
 import Spinner from "../components/common/Spinner";
 
 export default function CartPage() {
-  const { setView, cartItems, handleRemoveFromCart, handleClearCart, showToast, user, setMiniChatId, setMiniChatOpen } = useApp();
+  const { setView, cartItems, handleRemoveFromCart, handleUpdateCartQty, handleClearCart, showToast, user, setMiniChatId, setMiniChatOpen } = useApp();
 
   // Group by seller for combo calculation
   const itemsBySeller = cartItems.reduce((acc, item) => {
@@ -21,14 +21,15 @@ export default function CartPage() {
   let comboDiscount = 0;
   Object.values(itemsBySeller).forEach(items => {
     const firstItemWithCombo = items.find(i => i.combo);
-    if (firstItemWithCombo && items.length >= firstItemWithCombo.combo.minQty) {
-      const sellerSubtotal = items.reduce((s, i) => s + i.price, 0);
+    const totalQty = items.reduce((sum, item) => sum + (item.qty || 1), 0);
+    if (firstItemWithCombo && totalQty >= firstItemWithCombo.combo.minQty) {
+      const sellerSubtotal = items.reduce((s, i) => s + (i.price * (i.qty || 1)), 0);
       comboDiscount += sellerSubtotal * (firstItemWithCombo.combo.discount / 100);
     }
   });
 
-  const subtotal = cartItems.reduce((s, i) => s + i.price, 0);
-  const shipping = cartItems.reduce((s, i) => s + (i.shipping || 0), 0);
+  const subtotal = cartItems.reduce((s, i) => s + (i.price * (i.qty || 1)), 0);
+  const shipping = cartItems.reduce((s, i) => s + ((i.shipping || 0) * (i.qty || 1)), 0);
   const total = subtotal + shipping - comboDiscount;
 
   const handleRemove = async (item) => {
@@ -43,7 +44,7 @@ export default function CartPage() {
           <h1 style={{ fontSize: 30, fontWeight: 800, color: DS.textPrimary, letterSpacing: "-0.03em", marginBottom: 4 }}>
             🛒 Giỏ hàng
           </h1>
-          <p style={{ color: DS.textMuted }}>{cartItems.length} sản phẩm</p>
+          <p style={{ color: DS.textMuted }}>{cartItems.reduce((sum, i) => sum + (i.qty || 1), 0)} sản phẩm</p>
         </div>
         {cartItems.length > 0 && (
           <button
@@ -84,12 +85,36 @@ export default function CartPage() {
                   </h4>
                   <p style={{ fontSize: 13, color: DS.textMuted }}>{item.condition} · 📍 {item.location}</p>
                   <p style={{ fontSize: 12, color: item.shipping === 0 ? DS.success : DS.textMuted, marginTop: 4, fontWeight: item.shipping === 0 ? 700 : 400 }}>
-                    {item.shipping === 0 ? "✓ Miễn phí vận chuyển" : `+ ${formatPrice(item.shipping)} vận chuyển`}
+                    {item.shipping === 0 ? "✓ Miễn phí vận chuyển" : `+ ${formatPrice(item.shipping * (item.qty || 1))} vận chuyển`}
                   </p>
+
+                  {/* Quantity Selector inside Cart Page */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12 }}>
+                    <button
+                      onClick={() => handleUpdateCartQty(item.id, (item.qty || 1) - 1)}
+                      disabled={(item.qty || 1) <= 1}
+                      style={{
+                        width: 24, height: 24, borderRadius: "50%", border: `1px solid ${DS.border}`,
+                        background: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 14, fontWeight: "bold", cursor: "pointer", opacity: (item.qty || 1) <= 1 ? 0.4 : 1
+                      }}
+                    >-</button>
+                    <span style={{ fontSize: 13, fontWeight: "bold", minWidth: 20, textAlign: "center" }}>{item.qty || 1}</span>
+                    <button
+                      onClick={() => handleUpdateCartQty(item.id, (item.qty || 1) + 1)}
+                      disabled={(item.qty || 1) >= (item.stock || 10)}
+                      style={{
+                        width: 24, height: 24, borderRadius: "50%", border: `1px solid ${DS.border}`,
+                        background: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 14, fontWeight: "bold", cursor: "pointer", opacity: (item.qty || 1) >= (item.stock || 10) ? 0.4 : 1
+                      }}
+                    >+</button>
+                    <span style={{ fontSize: 11, color: DS.textMuted }}>(Tồn kho: {item.stock || 10})</span>
+                  </div>
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0 }}>
                   <p style={{ fontSize: 20, fontWeight: 900, color: DS.textPrimary, letterSpacing: "-0.03em", marginBottom: 10 }}>
-                    {formatPrice(item.price)}
+                    {formatPrice(item.price * (item.qty || 1))}
                   </p>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
@@ -128,8 +153,10 @@ export default function CartPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 18 }}>
               {cartItems.map((i) => (
                 <div key={i.id} style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                  <span style={{ fontSize: 13, color: DS.textSecondary, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{i.title}</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: DS.textPrimary, flexShrink: 0 }}>{formatPrice(i.price)}</span>
+                  <span style={{ fontSize: 13, color: DS.textSecondary, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {i.title} <span style={{ fontWeight: 700, color: DS.primary }}>x{i.qty || 1}</span>
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: DS.textPrimary, flexShrink: 0 }}>{formatPrice(i.price * (i.qty || 1))}</span>
                 </div>
               ))}
             </div>

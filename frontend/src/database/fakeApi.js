@@ -1,5 +1,6 @@
 import { CATEGORIES, LOCATIONS } from "./constants";
 import { saveMessageLocal, getMessagesLocal, getChatListLocal } from "./chatStorage";
+import { getSocket } from "../socket";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3004';
 const UPLOAD_API_URL = 'http://localhost:5000';
@@ -7,13 +8,17 @@ const UPLOAD_API_URL = 'http://localhost:5000';
 const fetchApi = async (endpoint, options = {}) => {
   try {
     let baseUrl = API_URL;
-    if (endpoint.startsWith('/users') || endpoint.startsWith('/products') || endpoint.startsWith('/orders') || endpoint.startsWith('/sales') || endpoint.startsWith('/admin')) {
+    if (endpoint.startsWith('/users') || endpoint.startsWith('/products') || endpoint.startsWith('/orders') || endpoint.startsWith('/sales') || endpoint.startsWith('/admin') || endpoint.startsWith('/categories') || endpoint.startsWith('/reviews')) {
       baseUrl = 'http://localhost:5000/api';
     }
     
+    const token = localStorage.getItem('handmeon_jwt_token');
+    const headers = { 'Content-Type': 'application/json', ...options.headers };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     const res = await fetch(`${baseUrl}${endpoint}`, {
       ...options,
-      headers: { 'Content-Type': 'application/json', ...options.headers }
+      headers
     });
     if (!res.ok) {
       const errBody = await res.json().catch(() => ({}));
@@ -40,38 +45,29 @@ const INITIAL_DB_PATH = 'shared/data/db.json'; // This is just for reference
 const fakeApi = {
   // ─── Categories ─────────────────────────────────────────────────────────────
   getCategories: async () => {
-    const prods = await fetchApi('/products').catch(() => []);
-    // Only count available products to match UI
-    const availableProds = prods.filter(p => p.status !== 'sold');
-    return CATEGORIES.map(c => ({
-      ...c,
-      count: availableProds.filter(p => p.category === c.id).length
-    }));
+    return fetchApi('/categories').catch(() => CATEGORIES);
   },
 
   // ─── Products ────────────────────────────────────────────────────────────────
   getProducts: async (filters = {}) => {
-    let products = await fetchApi('/products').catch(() => []);
+    const params = new URLSearchParams();
+    if (filters.search) params.append('search', filters.search);
+    if (filters.category && filters.category.length > 0) {
+      params.append('category', filters.category.join(','));
+    }
+    if (filters.condition && filters.condition.length > 0) {
+      params.append('condition', filters.condition.join(','));
+    }
+    if (filters.location && filters.location !== 'all') params.append('location', filters.location);
+    if (filters.minPrice) params.append('minPrice', filters.minPrice);
+    if (filters.maxPrice) params.append('maxPrice', filters.maxPrice);
+    if (filters.sortBy) params.append('sort', filters.sortBy);
+    if (filters.includeSold) params.append('status', 'all');
 
-    // Filtering
-    let filtered = products.filter(p => {
-      if (filters.search && !p.title.toLowerCase().includes(filters.search.toLowerCase())) return false;
-      if (filters.category && filters.category.length > 0 && !filters.category.includes(p.category)) return false;
-      if (filters.condition && filters.condition.length > 0 && !filters.condition.includes(p.condition)) return false;
-      if (filters.location && filters.location !== 'all' && p.location !== filters.location) return false;
-      if (!filters.includeSold && p.status === 'sold') return false;
-      if (filters.minPrice && p.price < Number(filters.minPrice)) return false;
-      if (filters.maxPrice && p.price > Number(filters.maxPrice)) return false;
-      return true;
-    });
+    // Limit to 40 items for speed
+    params.append('limit', '40');
 
-    // Sorting
-    if (filters.sortBy === 'price-asc') filtered.sort((a, b) => a.price - b.price);
-    else if (filters.sortBy === 'price-desc') filtered.sort((a, b) => b.price - a.price);
-    else if (filters.sortBy === 'views') filtered.sort((a, b) => b.views - a.views);
-    else filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-    return filtered;
+    return fetchApi(`/products?${params.toString()}`).catch(() => []);
   },
 
   deleteProduct: async (id) => fetchApi(`/products/${id}`, { method: 'DELETE' }),
@@ -80,8 +76,7 @@ const fakeApi = {
   getLocations: async () => LOCATIONS,
 
   getProductsBySeller: async (sellerId) => {
-    const all = await fetchApi('/products').catch(() => []);
-    return all.filter(p => p.sellerId === sellerId);
+    return fetchApi(`/products?sellerId=${sellerId}&all=true`).catch(() => []);
   },
 
   createListing: async (data) => {
@@ -97,9 +92,7 @@ const fakeApi = {
   },
 
   getSmartRecommendations: async (userId) => {
-    const products = await fetchApi('/products').catch(() => []);
-    // Simple random shuffle for demo; in production this would use user history
-    return products.sort(() => 0.5 - Math.random()).slice(0, 4);
+    return fetchApi('/products?limit=4').catch(() => []);
   },
 
   getProductById: async (id) => fetchApi(`/products/${id}`),
@@ -145,6 +138,17 @@ const fakeApi = {
     });
     if (!res.ok) throw new Error('Upload failed');
     return res.json();
+  },
+
+  uploadLocalFile: async (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        resolve({ url: reader.result }); // return base64
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   },
 
   updateUser: async (userId, data) => {
@@ -277,7 +281,7 @@ const fakeApi = {
   },
 
   // ─── Admin ───────────────────────────────────────────────────────────────────
-  getAdminStats: async () => fetchApi('/admin/stats'),
+  getAdminStats: async () => fetchApi('/stats').catch(() => ({})),
 
   getRecentActivity: async () => fetchApi('/admin/activity'),
 
@@ -356,11 +360,14 @@ const fakeApi = {
 
   // ─── Cart (Server + LocalStorage) ──────────────────────────────────────────
   getCart: async (userId = null) => {
-    if (userId) {
+    const hasToken = localStorage.getItem('handmeon_jwt_token');
+    if (userId && hasToken) {
       try {
         const user = await fetchApi(`/users/${userId}`);
         return user.cart || [];
-      } catch { return []; }
+      } catch {
+        // Fallback to local
+      }
     }
     try {
       const stored = localStorage.getItem('handmeon_cart');
@@ -368,13 +375,45 @@ const fakeApi = {
     } catch { return []; }
   },
 
-  addToCart: async (item, userId = null) => {
+  addToCart: async (item, userId = null, qtyToAdd = 1) => {
+    // 1. Fetch real-time product stock to prevent over-adding
+    let maxStock = item.stock !== undefined ? item.stock : 10;
+    try {
+      const realProduct = await fetchApi(`/products/${item.id}`);
+      if (realProduct) {
+        maxStock = realProduct.stock !== undefined ? realProduct.stock : maxStock;
+      }
+    } catch (e) {
+      console.warn("Could not fetch real-time product stock:", e);
+    }
+
     const cart = await fakeApi.getCart(userId);
     const exists = cart.find(i => i.id === item.id);
-    const updated = exists ? cart.map(i => i.id === item.id ? { ...i, qty: i.qty + 1 } : i) : [...cart, { ...item, qty: 1 }];
+    
+    let targetQty = qtyToAdd;
+    if (exists) {
+      targetQty = exists.qty + qtyToAdd;
+    }
 
-    if (userId) {
-      await fetchApi(`/users/${userId}`, { method: 'PATCH', body: JSON.stringify({ cart: updated }) });
+    if (targetQty > maxStock) {
+      if (maxStock <= 0) {
+        throw new Error("Sản phẩm này hiện đã hết hàng!");
+      }
+      throw new Error(`Đã đạt giới hạn tối đa tồn kho của sản phẩm này (Tối đa: ${maxStock} sản phẩm).`);
+    }
+
+    const updated = exists 
+      ? cart.map(i => i.id === item.id ? { ...i, qty: targetQty } : i) 
+      : [...cart, { ...item, qty: targetQty }];
+
+    const hasToken = localStorage.getItem('handmeon_jwt_token');
+    if (userId && hasToken) {
+      try {
+        await fetchApi(`/users/${userId}`, { method: 'PATCH', body: JSON.stringify({ cart: updated }) });
+      } catch (err) {
+        console.warn("Cart sync failed, saving locally:", err.message);
+        localStorage.setItem('handmeon_cart', JSON.stringify(updated));
+      }
     } else {
       localStorage.setItem('handmeon_cart', JSON.stringify(updated));
     }
@@ -384,8 +423,40 @@ const fakeApi = {
   removeFromCart: async (id, userId = null) => {
     const cart = await fakeApi.getCart(userId);
     const updated = cart.filter(i => i.id !== id);
-    if (userId) {
-      await fetchApi(`/users/${userId}`, { method: 'PATCH', body: JSON.stringify({ cart: updated }) });
+    const hasToken = localStorage.getItem('handmeon_jwt_token');
+    if (userId && hasToken) {
+      try {
+        await fetchApi(`/users/${userId}`, { method: 'PATCH', body: JSON.stringify({ cart: updated }) });
+      } catch (err) {
+        localStorage.setItem('handmeon_cart', JSON.stringify(updated));
+      }
+    } else {
+      localStorage.setItem('handmeon_cart', JSON.stringify(updated));
+    }
+    return updated;
+  },
+
+  updateCartQty: async (id, qty, userId = null) => {
+    const cart = await fakeApi.getCart(userId);
+    let maxStock = 10;
+    try {
+      const realProduct = await fetchApi(`/products/${id}`);
+      if (realProduct) {
+        maxStock = realProduct.stock !== undefined ? realProduct.stock : maxStock;
+      }
+    } catch (e) {
+      console.warn("Could not fetch real-time product stock:", e);
+    }
+
+    const cappedQty = Math.max(1, Math.min(qty, maxStock));
+    const updated = cart.map(i => i.id === id ? { ...i, qty: cappedQty } : i);
+    const hasToken = localStorage.getItem('handmeon_jwt_token');
+    if (userId && hasToken) {
+      try {
+        await fetchApi(`/users/${userId}`, { method: 'PATCH', body: JSON.stringify({ cart: updated }) });
+      } catch (err) {
+        localStorage.setItem('handmeon_cart', JSON.stringify(updated));
+      }
     } else {
       localStorage.setItem('handmeon_cart', JSON.stringify(updated));
     }
@@ -393,8 +464,13 @@ const fakeApi = {
   },
 
   clearCart: async (userId = null) => {
-    if (userId) {
-      await fetchApi(`/users/${userId}`, { method: 'PATCH', body: JSON.stringify({ cart: [] }) });
+    const hasToken = localStorage.getItem('handmeon_jwt_token');
+    if (userId && hasToken) {
+      try {
+        await fetchApi(`/users/${userId}`, { method: 'PATCH', body: JSON.stringify({ cart: [] }) });
+      } catch (err) {
+        localStorage.setItem('handmeon_cart', JSON.stringify([]));
+      }
     } else {
       localStorage.setItem('handmeon_cart', JSON.stringify([]));
     }
@@ -403,6 +479,27 @@ const fakeApi = {
 
   // ─── Coupons ─────────────────────────────────────────────────────────────────
   validateCoupon: async (code, orderTotal) => {
+    // Occasional coupon codes dynamic resolver
+    const dynamicCoupons = {
+      TET2026: { discount: 20, minOrder: 100000, maxDiscount: 200000, type: 'percent', name: '🧧 Lì xì Tết Nguyên Đán' },
+      VALENTINE: { discount: 14, minOrder: 50000, maxDiscount: 150000, type: 'percent', name: '💖 Valentine Ngọt Ngào' },
+      GIOPHONG: { discount: 15, minOrder: 100000, maxDiscount: 150000, type: 'percent', name: '🇻🇳 Đại Lễ 30/4 - 1/5' },
+      TRUNGTHU: { discount: 15, minOrder: 50000, maxDiscount: 100000, type: 'percent', name: '🌕 Trung Thu Phá Cổ' },
+      BLACKFRIDAY: { discount: 25, minOrder: 200000, maxDiscount: 300000, type: 'percent', name: '🖤 Black Friday Cực Sốc' },
+      NOEL2026: { discount: 18, minOrder: 100000, maxDiscount: 200000, type: 'percent', name: '🎄 Quà Giáng Sinh Ấm Áp' },
+      DOUBLEDEAL: { discount: 10, minOrder: 50000, maxDiscount: 100000, type: 'percent', name: '⚡ Ưu Đãi Ngày Đôi' },
+      WEEKEND: { discount: 10, minOrder: 50000, maxDiscount: 100000, type: 'percent', name: '🎉 Cuối Tuần Rực Rỡ' },
+      WELCOME7: { discount: 7, minOrder: 0, maxDiscount: 50000, type: 'percent', name: '🎁 Chào Mừng Bạn Mới' }
+    };
+
+    const upperCode = code.toUpperCase();
+    if (dynamicCoupons[upperCode]) {
+      const coupon = { id: `dyn_${upperCode}`, code: upperCode, ...dynamicCoupons[upperCode] };
+      if (orderTotal < coupon.minOrder) throw new Error(`Đơn hàng tối thiểu ${coupon.minOrder.toLocaleString('vi-VN')}đ`);
+      let discountAmount = Math.min(orderTotal * coupon.discount / 100, coupon.maxDiscount);
+      return { coupon, discountAmount };
+    }
+
     const coupons = await fetchApi(`/coupons?code=${code}`).catch(() => []);
     if (coupons.length === 0) throw new Error('Mã giảm giá không tồn tại');
     const coupon = coupons[0];
@@ -452,9 +549,14 @@ const fakeApi = {
   },
   getOrders: async (userId) => {
     try {
-      const res = await fetch('http://localhost:5000/api/orders');
-      const orders = await res.json();
+      const orders = await fetchApi('/orders');
       return orders.filter(o => o.buyerId === userId || o.sellerId === userId);
+    } catch { return []; }
+  },
+  
+  getAllOrdersAdmin: async () => {
+    try {
+      return await fetchApi('/orders');
     } catch { return []; }
   },
 
@@ -677,7 +779,11 @@ const fakeApi = {
     ]);
     return all
       .filter(r => r.sellerId === sellerId)
-      .map(r => ({ ...r, user: users.find(u => u.id === r.reviewerId) }));
+      .map(r => ({ ...r, user: users.find(u => u.id === (r.reviewerId || r.userId)) }));
+  },
+
+  getAllReviews: async () => {
+    return fetchApi('/reviews').catch(() => []);
   },
 
   addReview: async (reviewData) => {
@@ -687,6 +793,10 @@ const fakeApi = {
       date: new Date().toISOString().split('T')[0],
     };
     return fetchApi('/reviews', { method: 'POST', body: JSON.stringify(newReview) });
+  },
+
+  deleteReview: async (id) => {
+    return fetchApi(`/reviews/${id}`, { method: 'DELETE' });
   },
 
   // ─── Q&A ─────────────────────────────────────────────────────────────────────
@@ -726,56 +836,45 @@ const fakeApi = {
 
   // ─── Messaging ───────────────────────────────────────────────────────────────
   getChatsForUser: async (userId) => {
-    const messages = await fetchApi('/messages').catch(() => []);
-    const chatMap = {};
-    for (const msg of messages) {
-      if (!msg.chatId) continue;
-      if (!chatMap[msg.chatId]) chatMap[msg.chatId] = [];
-      chatMap[msg.chatId].push(msg);
-    }
+    const messages = await getMessagesLocal(); // Get all messages from local DB if possible, or we need a new function in chatStorage
+    // We should create a function getAllMessagesLocal in chatStorage, or modify getChatListLocal
+    const chatsLocal = await getChatListLocal(userId);
+    const users = await fetchApi('/users').catch(() => []);
+    const products = await fetchApi('/products').catch(() => []);
 
     const chats = [];
-    for (const [chatId, msgs] of Object.entries(chatMap)) {
-      // Check if this user is a participant in this chat
-      const parts = chatId.split('_');
-      if (!parts.includes(userId)) continue;
-
-      const lastMsg = msgs[msgs.length - 1];
-      // Find other user: any part that starts with 'u' and is not current user
+    for (const chat of chatsLocal) {
+      const parts = chat.id.split('_');
       const otherUserId = parts.find(id => id.startsWith('u') && id !== userId);
-      // Find product: any part that starts with 'p'
       const productIdFromChatId = parts.find(id => id.startsWith('p'));
-
-      const otherUser = otherUserId
-        ? await fetchApi(`/users/${otherUserId}`).catch(() => null)
-        : null;
-
+      
+      const otherUser = users.find(u => u.id === otherUserId) || null;
       let product = null;
-      const prodId = lastMsg.productId || productIdFromChatId;
-      if (prodId) {
-        product = await fetchApi(`/products/${prodId}`).catch(() => null);
+      if (productIdFromChatId) {
+        product = products.find(p => p.id === productIdFromChatId) || null;
       }
 
-      // Sort messages by timestamp
-      msgs.sort((a, b) => a.id.localeCompare(b.id));
-      const sortedLastMsg = msgs[msgs.length - 1];
-
       chats.push({
-        id: chatId,
+        id: chat.id,
         user: otherUser,
         product,
-        time: sortedLastMsg.time,
-        lastMessage: sortedLastMsg.text || (sortedLastMsg.type === 'image' ? '[Hình ảnh]' : sortedLastMsg.type === 'audio' ? '[Ghi âm]' : ''),
-        unreadCount: msgs.filter(m => m.senderId !== userId && !m.read).length
+        time: chat.lastMessageTime ? new Date(chat.lastMessageTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : "Vừa xong",
+        lastMessage: chat.lastMessage,
+        unreadCount: chat.unreadCount
       });
     }
-    // Sort chats by last message (newest first)
     return chats.sort((a, b) => (b.time || '').localeCompare(a.time || ''));
   },
 
+  markAsRead: async (chatId, userId) => {
+    // Implementing markAsRead via chatStorage logic
+    // we need to add markAsReadLocal to chatStorage
+    const { markAsReadLocal } = await import('./chatStorage');
+    return markAsReadLocal(chatId, userId);
+  },
+
   getChatHistory: async (chatId) => {
-    const all = await fetchApi('/messages').catch(() => []);
-    return all.filter(m => m.chatId === chatId);
+    return getMessagesLocal(chatId);
   },
 
   sendMessage: async (chatId, senderId, text, productId = null, payload = {}) => {
@@ -788,14 +887,28 @@ const fakeApi = {
       read: false,
       time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       reactions: {},
+      timestamp: new Date().toISOString(),
       ...payload
     };
-    const res = await fetchApi('/messages', { method: 'POST', body: JSON.stringify(msg) });
+    const savedMsg = await saveMessageLocal(msg);
+    
+    const socket = getSocket();
+    if (socket) {
+      // Find the recipient ID from chatId (assuming chatId = "u1_u2" or "p1_u1_u2")
+      const parts = chatId.split('_');
+      const receiverId = parts.find(p => p.startsWith('u') && p !== senderId);
+      if (receiverId) {
+        socket.emit('send_message', { ...msg, recipientId: receiverId });
+      }
+    }
+    
+    const res = savedMsg;
 
     // Chatbot logic for bot_123
     if (chatId.includes('bot_123') && senderId !== 'bot_123') {
       const lowerText = (msg.text || "").toLowerCase();
       let botReply = "Xin lỗi, hiện tại tôi chưa hiểu ý bạn. Bạn có thể nói rõ hơn được không?";
+
 
       if (lowerText.includes("mua") || lowerText.includes("thanh toán")) {
         botReply = "Để mua hàng, bạn chọn sản phẩm ưng ý, bấm 'Chat ngay' để thương lượng với người bán hoặc bấm 'Mua ngay' để thanh toán qua hệ thống bảo vệ người mua Escrow nhé!";
@@ -953,9 +1066,94 @@ const fakeApi = {
 
   getRecommendedProducts: async (limit = 4) => {
     try {
-      const prods = await fetchApi('/products?status=available&_limit=20');
-      return prods.sort(() => 0.5 - Math.random()).slice(0, limit);
-    } catch { return []; }
+      const [products, reviews] = await Promise.all([
+        fetchApi('/products?status=available').catch(() => []),
+        fetchApi('/reviews').catch(() => [])
+      ]);
+
+      // Get viewed categories from localStorage
+      let preferredCats = {};
+      try {
+        const storedCats = localStorage.getItem('handmeon_preferred_categories');
+        if (storedCats) preferredCats = JSON.parse(storedCats);
+      } catch (e) {}
+
+      // Get viewed product IDs
+      let viewedProdIds = [];
+      try {
+        const storedViews = localStorage.getItem('handmeon_viewed_products');
+        if (storedViews) viewedProdIds = JSON.parse(storedViews);
+      } catch (e) {}
+
+      // Calculate score for each product
+      const scored = products.map(p => {
+        let score = 0;
+        
+        // 1. Views factor (views * 1)
+        score += (p.views || 0) * 1;
+        
+        // 2. Reviews factor (count reviews * 5)
+        const prodReviews = reviews.filter(r => r.productId === p.id);
+        score += prodReviews.length * 5;
+        
+        // 3. Purchase factor (sales * 10)
+        score += (p.sales || 0) * 10;
+        
+        // 4. Category preference match (preferred count * 25)
+        const catPrefCount = preferredCats[p.category] || 0;
+        score += catPrefCount * 25;
+        
+        // 5. Exclude recently viewed products to keep recommendations fresh
+        if (viewedProdIds.includes(p.id)) {
+          score -= 50; 
+        }
+
+        return { ...p, score };
+      });
+
+      // Sort by score descending
+      return scored
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit);
+    } catch {
+      return [];
+    }
+  },
+
+  trackProductView: async (productId, categoryId) => {
+    try {
+      // 1. Update views count on backend
+      const prod = await fetchApi(`/products/${productId}`).catch(() => null);
+      if (prod) {
+        await fetchApi(`/products/${productId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ views: (prod.views || 0) + 1 })
+        }).catch(() => {});
+      }
+
+      // 2. Store preferred categories in localStorage
+      let preferredCats = {};
+      try {
+        const storedCats = localStorage.getItem('handmeon_preferred_categories');
+        if (storedCats) preferredCats = JSON.parse(storedCats);
+      } catch (e) {}
+      preferredCats[categoryId] = (preferredCats[categoryId] || 0) + 1;
+      localStorage.setItem('handmeon_preferred_categories', JSON.stringify(preferredCats));
+
+      // 3. Store viewed product IDs (limit to 10 latest)
+      let viewedProdIds = [];
+      try {
+        const storedViews = localStorage.getItem('handmeon_viewed_products');
+        if (storedViews) viewedProdIds = JSON.parse(storedViews);
+      } catch (e) {}
+      if (!viewedProdIds.includes(productId)) {
+        viewedProdIds.unshift(productId);
+        viewedProdIds = viewedProdIds.slice(0, 10);
+        localStorage.setItem('handmeon_viewed_products', JSON.stringify(viewedProdIds));
+      }
+    } catch (e) {
+      console.warn("Error tracking product view:", e);
+    }
   },
 
   // ─── Social & Notifications ────────────────────────────────────────────────
@@ -1026,4 +1224,3 @@ const fakeApi = {
 };
 
 export default fakeApi;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         

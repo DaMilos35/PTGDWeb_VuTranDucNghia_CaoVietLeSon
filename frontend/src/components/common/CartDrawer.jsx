@@ -7,7 +7,7 @@ import Button from "../common/Button";
 import fakeApi from "../../database/fakeApi";
 
 export default function CartDrawer() {
-  const { cartDrawerOpen, setCartDrawerOpen, cartItems, setView, handleRemoveFromCart, handleClearCart, user, setMiniChatId, setMiniChatOpen } = useApp();
+  const { cartDrawerOpen, setCartDrawerOpen, cartItems, setView, handleRemoveFromCart, handleUpdateCartQty, handleClearCart, user, setMiniChatId, setMiniChatOpen } = useApp();
   const [closing, setClosing] = useState(false);
   const location = useLocation();
 
@@ -38,14 +38,15 @@ export default function CartDrawer() {
   let comboDiscount = 0;
   Object.values(itemsBySeller).forEach(items => {
     const firstItemWithCombo = items.find(i => i.combo);
-    if (firstItemWithCombo && items.length >= firstItemWithCombo.combo.minQty) {
-      const sellerSubtotal = items.reduce((s, i) => s + i.price, 0);
+    const totalQty = items.reduce((sum, item) => sum + (item.qty || 1), 0);
+    if (firstItemWithCombo && totalQty >= firstItemWithCombo.combo.minQty) {
+      const sellerSubtotal = items.reduce((s, i) => s + (i.price * (i.qty || 1)), 0);
       comboDiscount += sellerSubtotal * (firstItemWithCombo.combo.discount / 100);
     }
   });
 
-  const subtotal = cartItems.reduce((s, i) => s + i.price, 0);
-  const shipping = cartItems.reduce((s, i) => s + (i.shipping || 0), 0);
+  const subtotal = cartItems.reduce((s, i) => s + (i.price * (i.qty || 1)), 0);
+  const shipping = cartItems.reduce((s, i) => s + ((i.shipping || 0) * (i.qty || 1)), 0);
   const total = subtotal + shipping - comboDiscount;
 
   return (
@@ -90,7 +91,7 @@ export default function CartDrawer() {
         {/* Header */}
         <div style={{ padding: "20px 24px", borderBottom: `1px solid ${DS.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h2 style={{ fontSize: 20, fontWeight: 800, color: DS.textPrimary, display: "flex", alignItems: "center", gap: 8 }}>
-            🛒 Giỏ hàng <span style={{ background: DS.primary, color: "#fff", padding: "2px 8px", borderRadius: 20, fontSize: 13, fontWeight: 700 }}>{cartItems.length}</span>
+            🛒 Giỏ hàng <span style={{ background: DS.primary, color: "#fff", padding: "2px 8px", borderRadius: 20, fontSize: 13, fontWeight: 700 }}>{cartItems.reduce((sum, i) => sum + (i.qty || 1), 0)}</span>
           </h2>
           <button onClick={handleClose} style={{ background: DS.bgHover, border: "none", width: 36, height: 36, borderRadius: "50%", cursor: "pointer", fontSize: 18, color: DS.textSecondary, display: "flex", alignItems: "center", justifyContent: "center" }}>
             ✕
@@ -116,6 +117,31 @@ export default function CartDrawer() {
                       {item.title}
                     </h4>
                     <p style={{ fontSize: 14, fontWeight: 800, color: DS.primary, marginBottom: 8 }}>{formatPrice(item.price)}</p>
+                    
+                    {/* Quantity Selector inside Cart */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                      <button
+                        onClick={() => handleUpdateCartQty(item.id, (item.qty || 1) - 1)}
+                        disabled={(item.qty || 1) <= 1}
+                        style={{
+                          width: 24, height: 24, borderRadius: "50%", border: `1px solid ${DS.border}`,
+                          background: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: 14, fontWeight: "bold", cursor: "pointer", opacity: (item.qty || 1) <= 1 ? 0.4 : 1
+                        }}
+                      >-</button>
+                      <span style={{ fontSize: 13, fontWeight: "bold", minWidth: 20, textAlign: "center" }}>{item.qty || 1}</span>
+                      <button
+                        onClick={() => handleUpdateCartQty(item.id, (item.qty || 1) + 1)}
+                        disabled={(item.qty || 1) >= (item.stock || 10)}
+                        style={{
+                          width: 24, height: 24, borderRadius: "50%", border: `1px solid ${DS.border}`,
+                          background: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: 14, fontWeight: "bold", cursor: "pointer", opacity: (item.qty || 1) >= (item.stock || 10) ? 0.4 : 1
+                        }}
+                      >+</button>
+                      <span style={{ fontSize: 11, color: DS.textMuted }}>(Kho: {item.stock || 10})</span>
+                    </div>
+
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={async () => {
                         const sellerId = item.sellerId;

@@ -24,7 +24,7 @@ const User = sequelize.define('User', {
     defaultValue: 'user'
   },
   avatar: {
-    type: DataTypes.STRING
+    type: DataTypes.TEXT('long')
   },
   rating: {
     type: DataTypes.FLOAT,

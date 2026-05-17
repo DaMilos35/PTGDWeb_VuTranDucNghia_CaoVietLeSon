@@ -12,6 +12,112 @@ import SpinTheWheel from "../components/common/SpinTheWheel";
 import { useEffect } from "react";
 import "../design/premium.css";
 
+function getActiveOccasionalDiscount() {
+  const now = new Date();
+  const month = now.getMonth() + 1; // 1-indexed
+  const date = now.getDate();
+
+  // 1. Lunar New Year (Jan & Feb)
+  if (month === 1 || month === 2) {
+    return {
+      code: "TET2026",
+      discount: 20,
+      title: "🧧 Tết Nguyên Đán Rộn Ràng",
+      description: "Lì xì đầu năm - Giảm ngay 20% cho mọi đơn hàng!",
+      bannerBg: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
+      borderColor: "#fde047"
+    };
+  }
+  // 2. Valentine (Feb 10 - Feb 15)
+  if (month === 2 && date >= 10 && date <= 15) {
+    return {
+      code: "VALENTINE",
+      discount: 14,
+      title: "💖 Mùa Yêu Thương Ngọt Ngào",
+      description: "Giảm 14% cho các cặp đôi cùng mua sắm thông minh!",
+      bannerBg: "linear-gradient(135deg, #ec4899 0%, #be185d 100%)",
+      borderColor: "#fbcfe8"
+    };
+  }
+  // 3. Reunification & Labor Day (Apr 25 - May 3)
+  if ((month === 4 && date >= 25) || (month === 5 && date <= 3)) {
+    return {
+      code: "GIOPHONG",
+      discount: 15,
+      title: "🇻🇳 Đại Lễ 30/4 - 1/5 Rực Rỡ",
+      description: "Mừng ngày giải phóng & lao động - Giảm ngay 15% toàn sàn!",
+      bannerBg: "linear-gradient(135deg, #ef4444 0%, #da251d 100%)",
+      borderColor: "#fde047"
+    };
+  }
+  // 4. Mid-Autumn (Sept 15 - Oct 5)
+  if ((month === 9 && date >= 15) || (month === 10 && date <= 5)) {
+    return {
+      code: "TRUNGTHU",
+      discount: 15,
+      title: "🌕 Trung Thu Ấm Áp Rước Đèn",
+      description: "Phá cỗ trông trăng cùng ưu đãi cực ngọt - Giảm 15%!",
+      bannerBg: "linear-gradient(135deg, #fbbf24 0%, #d97706 100%)",
+      borderColor: "#fef08a"
+    };
+  }
+  // 5. Black Friday (Nov 10 - Nov 30)
+  if (month === 11 && date >= 10) {
+    return {
+      code: "BLACKFRIDAY",
+      discount: 25,
+      title: "🖤 Black Friday Siêu Bùng Nổ",
+      description: "Đại tiệc mua sắm lớn nhất năm - Sale chạm đáy 25%!",
+      bannerBg: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
+      borderColor: "#64748b"
+    };
+  }
+  // 6. Christmas & New Year (Dec 15 - Jan 5)
+  if ((month === 12 && date >= 15) || (month === 1 && date <= 5)) {
+    return {
+      code: "NOEL2026",
+      discount: 18,
+      title: "🎄 Giáng Sinh An Lành & Năm Mới",
+      description: "Món quà giáng sinh ấm áp - Giảm ngay 18% cho đơn hàng của bạn!",
+      bannerBg: "linear-gradient(135deg, #065f46 0%, #047857 100%)",
+      borderColor: "#f87171"
+    };
+  }
+  // 7. Double Days (e.g. 5/5, 6/6, etc.)
+  if (month === date) {
+    return {
+      code: "DOUBLEDEAL",
+      discount: 10,
+      title: `⚡ Ngày Đôi Siêu Mua Sắm ${date}/${month}`,
+      description: `Bùng nổ mua sắm ngày trùng tháng - Giảm ngay 10%!`,
+      bannerBg: "linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)",
+      borderColor: "#c7d2fe"
+    };
+  }
+  // 8. Weekend Deal (Saturday & Sunday)
+  const day = now.getDay();
+  if (day === 0 || day === 6) {
+    return {
+      code: "WEEKEND",
+      discount: 10,
+      title: "🎉 Cuối Tuần Rực Rỡ",
+      description: "Thư giãn mua sắm cuối tuần - Ưu đãi giảm 10% đặc biệt!",
+      bannerBg: "linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)",
+      borderColor: "#bae6fd"
+    };
+  }
+
+  // 9. Default Welcome Voucher
+  return {
+    code: "WELCOME7",
+    discount: 7,
+    title: "🎁 Chào Mừng Bạn Mới",
+    description: "Nhập mã mới tham gia cộng đồng Hand-Me-On - Nhận ngay 7% ưu đãi!",
+    bannerBg: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
+    borderColor: "#c7d2fe"
+  };
+}
+
 function Countdown({ hours = 2, minutes = 0, seconds = 0 }) {
   const [time, setTime] = useState({ h: hours, m: minutes, s: seconds });
 
@@ -468,6 +574,68 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* ── Festive Occasional Discount Banner ── */}
+      {(() => {
+        const promo = getActiveOccasionalDiscount();
+        return (
+          <div style={{
+            background: promo.bannerBg,
+            borderBottom: `3px solid ${promo.borderColor}`,
+            padding: "20px 28px",
+            color: "#fff",
+            fontFamily: "Be Vietnam Pro, sans-serif",
+            position: "relative",
+            overflow: "hidden",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.15)"
+          }}>
+            {/* Ambient glowing circles */}
+            <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.1)", filter: "blur(20px)" }} />
+            <div style={{ position: "absolute", bottom: -20, left: "20%", width: 80, height: 80, borderRadius: "50%", background: "rgba(255,255,255,0.05)", filter: "blur(15px)" }} />
+            
+            <div style={{ maxWidth: 1360, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16, position: "relative", zIndex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <span style={{ fontSize: 36, animation: "bounce 2s infinite" }}>{promo.code.includes("TET") ? "🧧" : (promo.code.includes("VALENTINE") ? "💖" : "🎁")}</span>
+                <div>
+                  <h3 style={{ fontSize: 18, fontWeight: 900, margin: "0 0 4px 0", display: "flex", alignItems: "center", gap: 8, letterSpacing: "-0.02em" }}>
+                    {promo.title} <span style={{ background: "rgba(255,255,255,0.2)", padding: "2px 8px", borderRadius: 12, fontSize: 11, fontWeight: 700 }}>Ưu đãi giới hạn</span>
+                  </h3>
+                  <p style={{ fontSize: 14, margin: 0, opacity: 0.9 }}>{promo.description}</p>
+                </div>
+              </div>
+              
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ background: "rgba(255,255,255,0.15)", border: `1.5px dashed ${promo.borderColor}`, padding: "8px 16px", borderRadius: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", opacity: 0.8 }}>Mã:</span>
+                  <span style={{ fontSize: 16, fontWeight: 900, letterSpacing: "0.05em", color: "#FDE047" }}>{promo.code}</span>
+                </div>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(promo.code);
+                    showToast(`Đã sao chép mã ưu đãi "${promo.code}" thành công! 🎉`, "success");
+                  }}
+                  style={{
+                    background: "#fff",
+                    color: "#000",
+                    border: "none",
+                    borderRadius: 12,
+                    padding: "10px 20px",
+                    fontWeight: 800,
+                    fontSize: 13,
+                    cursor: "pointer",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                    transition: "all 0.2s"
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.05)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = "none"; }}
+                >
+                  Sao chép mã 📋
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Category bar ── */}
       <div style={{ background: "#fff", borderBottom: `1px solid ${DS.border}`, padding: "14px 28px" }}>
