@@ -705,14 +705,18 @@ export default function HomePage() {
                   SIÊU SALE <span style={{ color: "#fca5a5" }}>CHỚP NHOÁNG</span>
                 </h2>
               </div>
-              <Button onClick={() => setView("flashsale")} size="lg" style={{ background: "linear-gradient(135deg, #f97316, #ef4444)", border: "none", color: "#fff", fontWeight: 900, boxShadow: "0 8px 24px rgba(239,68,68,0.4)" }}>
-                XEM TẤT CẢ DEALS SỐC ➔
-              </Button>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 24 }}>
+            <div style={{ display: "flex", gap: 24, overflowX: "auto", paddingBottom: 16, scrollbarWidth: "none" }}>
               {flashSales.slice(0, 4).map(item => (
-                <FlashSaleCard key={item.id} item={item} onViewProduct={handleViewProduct} onAddToCart={handleFlashAddToCart} />
+                <div key={item.id} style={{ flex: "0 0 calc(25% - 18px)", minWidth: 260 }}>
+                  <FlashSaleCard item={item} onViewProduct={handleViewProduct} onAddToCart={handleFlashAddToCart} />
+                </div>
               ))}
+            </div>
+            <div style={{ textAlign: "center", marginTop: 16 }}>
+              <Button onClick={() => setView("flashsale")} size="lg" style={{ background: "linear-gradient(135deg, #f97316, #ef4444)", border: "none", color: "#fff", fontWeight: 900, boxShadow: "0 8px 24px rgba(239,68,68,0.4)", padding: "14px 40px" }}>
+                XEM THÊM DEALS SỐC ➔
+              </Button>
             </div>
           </div>
         </div>
@@ -960,7 +964,7 @@ export default function HomePage() {
       <div 
         onClick={() => setShowWheel(true)}
         className="float-animation"
-        style={{ position: "fixed", bottom: 100, right: 24, zIndex: 9990, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}
+        style={{ position: "fixed", bottom: 100, left: 24, zIndex: 9990, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}
       >
         <div style={{ background: "linear-gradient(135deg, #FFD700, #FFA500)", width: 60, height: 60, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, boxShadow: "0 10px 25px rgba(255,165,0,0.4)", border: "3px solid #fff" }}>🎁</div>
         <Badge color="#FFA500" bg="#fff" size="xs">Quà tặng!</Badge>

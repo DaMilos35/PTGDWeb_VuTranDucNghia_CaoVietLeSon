@@ -28,13 +28,75 @@ const CONDITIONS = [
   { value: 'poor', label: 'Cũ (<90%)' }
 ];
 
-const MOCK_VIDEOS = [
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-  "https://joy1.videvo.net/videvo_files/video/free/2019-11/large_watermarked/190828_27_Supermarket_14_preview.mp4"
-];
+const CATEGORY_VIDEOS = {
+  "c1": [
+    "https://assets.mixkit.co/videos/preview/mixkit-unboxing-a-new-smartphone-40733-large.mp4",
+    "https://assets.mixkit.co/videos/preview/mixkit-hands-holding-a-smartphone-with-a-blank-screen-40742-large.mp4"
+  ],
+  "c2": [
+    "https://assets.mixkit.co/videos/preview/mixkit-shopping-in-a-clothing-store-4348-large.mp4",
+    "https://assets.mixkit.co/videos/preview/mixkit-girl-trying-on-clothes-in-a-store-4351-large.mp4"
+  ],
+  "c9": [
+    "https://joy1.videvo.net/videvo_files/video/free/2019-11/large_watermarked/190828_27_Supermarket_14_preview.mp4"
+  ],
+  "default": [
+    "https://assets.mixkit.co/videos/preview/mixkit-a-laptop-computer-sitting-on-a-desk-42171-large.mp4",
+    "https://assets.mixkit.co/videos/preview/mixkit-man-opening-a-cardboard-box-at-home-4341-large.mp4"
+  ]
+};
+
+function getVideoForCategory(catId) {
+  const vids = CATEGORY_VIDEOS[catId] || CATEGORY_VIDEOS["default"];
+  return faker.helpers.arrayElement(vids);
+}
 
 const REALISTIC_PRODUCTS = [
+  {
+    title: "iPhone 14 Pro Max 256GB Tím",
+    price: 21500000,
+    condition: "like-new",
+    category: "c1",
+    images: ["https://images.unsplash.com/photo-1695048133142-1a20484d2569?q=80&w=800&auto=format&fit=crop"],
+    description: "Pass nhanh iPhone 14 Pro max màu tím, pin 95%. Máy đẹp keng không tì vết.",
+    tags: ["iphone", "apple", "smartphone"]
+  },
+  {
+    title: "Giày thể thao nữ Nike Revolution 6",
+    price: 850000,
+    condition: "new",
+    category: "c2",
+    images: ["https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=800&auto=format&fit=crop"],
+    description: "Giày chạy bộ Nike chính hãng, size 37, mua về đi không vừa nên pass lại giá rẻ.",
+    tags: ["giày", "nike", "thể thao"]
+  },
+  {
+    title: "Tủ lạnh Panasonic Inverter 234L",
+    price: 3200000,
+    condition: "good",
+    category: "c3",
+    images: ["https://images.unsplash.com/photo-1584568694244-14fbdf83bd30?q=80&w=800&auto=format&fit=crop"],
+    description: "Chuyển nhà cần thanh lý tủ lạnh Panasonic đang dùng tốt, làm lạnh nhanh, tiết kiệm điện.",
+    tags: ["tủ lạnh", "gia dụng", "panasonic"]
+  },
+  {
+    title: "Lều Cắm Trại 4 Người Chống Nước",
+    price: 450000,
+    condition: "good",
+    category: "c5",
+    images: ["https://images.unsplash.com/photo-1504280390224-dd94291ab0c6?q=80&w=800&auto=format&fit=crop"],
+    description: "Lều Naturehike 4 người còn rất mới, chống nước tốt, dùng đi cắm trại vài lần.",
+    tags: ["dã ngoại", "lều", "cắm trại"]
+  },
+  {
+    title: "Mũ bảo hiểm Royal M139",
+    price: 350000,
+    condition: "like-new",
+    category: "c6",
+    images: ["https://images.unsplash.com/photo-1557007785-5c1ab3239aeb?q=80&w=800&auto=format&fit=crop"],
+    description: "Mũ 3/4 Royal màu đen nhám, kính ẩn, đội cực êm, size L. Chỉ đội 1-2 lần.",
+    tags: ["xe máy", "mũ bảo hiểm", "royal"]
+  },
   {
     title: "iPhone 13 Pro Max 256GB Xanh Sierra, nguyên bản 100%",
     price: 13500000,
@@ -201,7 +263,7 @@ function generateRealNameAndAvatar() {
       category: rp.category,
       sellerId: `u${faker.number.int({ min: 1, max: NUM_USERS })}`,
       images: rp.images,
-      videoUrl: i % 2 === 0 ? faker.helpers.arrayElement(MOCK_VIDEOS) : null,
+      videoUrl: i % 2 === 0 ? getVideoForCategory(rp.category) : null,
       description: rp.description,
       location: faker.helpers.arrayElement(LOCATIONS),
       format: "buy-now",
@@ -219,7 +281,7 @@ function generateRealNameAndAvatar() {
   });
 
   // Then add about 40 more slightly varied products for volume
-  for (let i = 11; i <= 50; i++) {
+  for (let i = REALISTIC_PRODUCTS.length + 1; i <= 50; i++) {
     const rp = faker.helpers.arrayElement(REALISTIC_PRODUCTS);
     const catId = rp.category;
     const isAuction = Math.random() > 0.8;
@@ -231,7 +293,7 @@ function generateRealNameAndAvatar() {
       category: catId,
       sellerId: `u${faker.number.int({ min: 1, max: NUM_USERS })}`,
       images: rp.images,
-      videoUrl: Math.random() > 0.7 ? faker.helpers.arrayElement(MOCK_VIDEOS) : null,
+      videoUrl: Math.random() > 0.6 ? getVideoForCategory(catId) : null,
       description: rp.description + " Mua bán nhanh gọn lẹ.",
       location: faker.helpers.arrayElement(LOCATIONS),
       format: isAuction ? "auction" : "buy-now",

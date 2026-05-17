@@ -4,7 +4,7 @@ import path from 'path';
 import multer from 'multer';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import { sequelize, User, Product, Order, SuperSale, Review, SiteStat } from './models/index.js';
+import { sequelize, User, Product, Order, SuperSale, Review, SiteStat, Category } from './models/index.js';
 import { Server } from 'socket.io';
 import http from 'http';
 import jwt from 'jsonwebtoken';
