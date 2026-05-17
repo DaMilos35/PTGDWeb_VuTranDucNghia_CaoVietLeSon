@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6C63FF"/>
+      <stop offset="100%" stop-color="#A78BFA"/>
+    </linearGradient>
+    <linearGradient id="hand" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#EEF0FF" stop-opacity="0.9"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#6C63FF" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <!-- Background rounded square -->
+  <rect width="200" height="200" rx="44" fill="url(#bg)" filter="url(#shadow)"/>
+  <!-- Shine overlay -->
+  <rect width="200" height="100" rx="44" fill="white" fill-opacity="0.06"/>
+  <!-- Handshake icon (left hand) -->
+  <path d="M55 100 C55 90, 62 82, 72 82 L88 82 C95 82, 100 88, 100 95 L100 105 C100 112, 95 118, 88 118 L72 118 C62 118, 55 110, 55 100Z" fill="url(#hand)" opacity="0.9"/>
+  <!-- Handshake icon (right hand) -->
+  <path d="M145 100 C145 90, 138 82, 128 82 L112 82 C105 82, 100 88, 100 95 L100 105 C100 112, 105 118, 112 118 L128 118 C138 118, 145 110, 145 100Z" fill="url(#hand)" opacity="0.9"/>
+  <!-- Center overlap circle -->
+  <circle cx="100" cy="100" r="14" fill="white" opacity="0.95"/>
+  <!-- Arrows indicating exchange -->
+  <path d="M76 92 L68 86 L76 80" stroke="#6C63FF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M124 92 L132 86 L124 80" stroke="#6C63FF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Heart/recycle symbol in center -->
+  <path d="M95 100 C95 97, 97 95, 100 97 C103 95, 105 97, 105 100 C105 104, 100 108, 100 108 C100 108, 95 104, 95 100Z" fill="#6C63FF"/>
+  <!-- Sparkles -->
+  <circle cx="42" cy="42" r="3" fill="white" opacity="0.6"/>
+  <circle cx="158" cy="42" r="2" fill="white" opacity="0.5"/>
+  <circle cx="158" cy="158" r="3" fill="white" opacity="0.6"/>
+  <circle cx="42" cy="158" r="2" fill="white" opacity="0.4"/>
+  <circle cx="100" cy="28" r="2" fill="white" opacity="0.5"/>
+</svg>

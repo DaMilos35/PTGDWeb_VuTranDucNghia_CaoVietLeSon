@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # ── Mock API (json-server) ────────────────────────────────
+  mock-api:
+    image: node:20-alpine
+    container_name: hmo-mock-api
+    working_dir: /app
+    volumes:
+      - ./shared/data/db.json:/app/db.json
+    ports:
+      - "3004:3004"
+    command: >
+      sh -c "npm install -g json-server@1.0.0-beta.3 &&
+             json-server --watch db.json --port 3004 --host 0.0.0.0"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3004/products?_limit=1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hmo-net
+
+  # ── Backend (Express) ─────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+    container_name: hmo-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=development
+      - PORT=5000
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - ./shared/uploads:/app/shared/uploads
+    networks:
+      - hmo-net
+
+  # ── Frontend (React/Vite) ─────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: hmo-frontend
+    ports:
+      - "8080:80"
+    environment:
+      - VITE_API_URL=http://localhost:3004
+    depends_on:
+      mock-api:
+        condition: service_healthy
+    networks:
+      - hmo-net
+
+networks:
+  hmo-net:
+    driver: bridge

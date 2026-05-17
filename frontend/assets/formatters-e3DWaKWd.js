@@ -1,0 +1,1 @@
+var e=e=>new Intl.NumberFormat(`vi-VN`,{style:`currency`,currency:`VND`}).format(e).replace(`₫`,`đ`);export{e as t};
